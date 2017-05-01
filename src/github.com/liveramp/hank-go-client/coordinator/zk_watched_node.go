@@ -15,6 +15,7 @@ func NewZkWatchedNode(client curator.CuratorFramework, path string) (r *ZkWatche
 
 	node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector)
 	node.SetCreateParentNodes(true)
+	node.SetMaxDepth(0)
 	node.Start()
 
 	return &ZkWatchedNode{node: node, client: client, path: path}
