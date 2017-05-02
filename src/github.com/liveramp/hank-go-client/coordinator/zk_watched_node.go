@@ -11,17 +11,17 @@ type ZkWatchedNode struct {
 	path   string
 }
 
-func NewZkWatchedNode(client curator.CuratorFramework, path string) (r *ZkWatchedNode) {
+func NewZkWatchedNode(client curator.CuratorFramework, path string, create bool) (r *ZkWatchedNode) {
 
 	node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector)
-	node.SetCreateParentNodes(true)
+	node.SetCreateParentNodes(create)
 	node.SetMaxDepth(0)
 	node.Start()
 
 	return &ZkWatchedNode{node: node, client: client, path: path}
 }
 
-func (p *ZkWatchedNode) get() ([]byte, error) {
+func (p *ZkWatchedNode) Get() ([]byte, error) {
 	data, err := p.node.CurrentData(p.path);
 
 	if err != nil {
@@ -31,7 +31,7 @@ func (p *ZkWatchedNode) get() ([]byte, error) {
 	return data.Data(), nil
 }
 
-func (p *ZkWatchedNode) set(value []byte) (error) {
+func (p *ZkWatchedNode) Set(value []byte) (error) {
 	_, err := p.client.SetData().ForPathWithData(p.path, value)
 	return err
 }

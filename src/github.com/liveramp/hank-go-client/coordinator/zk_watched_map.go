@@ -5,16 +5,18 @@ import (
   "github.com/curator-go/curator"
   "path"
   "github.com/liveramp/hank-go-client/util"
+  "fmt"
 )
 
 type MapLoader interface {
-  load(path string, client curator.CuratorFramework) interface{}
+  load(path string, client curator.CuratorFramework) (interface{}, error)
 }
 
 type ZkWatchedMap struct {
+  Root string
+
   node         *cache.TreeCache
   client       curator.CuratorFramework
-  path         string
   loader       MapLoader
   internalData map[string]interface{}
 }
@@ -31,6 +33,8 @@ func NewChildLoader(internalData map[string]interface{}, loader MapLoader, root 
 
 func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.TreeCacheEvent) error {
 
+  fmt.Println("got event type", event.Type)
+
   switch event.Type {
 
   case cache.TreeCacheEventNodeUpdated:
@@ -39,8 +43,10 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 
     fullChildPath := event.Data.Path()
 
+    fmt.Println("on path", event.Data.Path())
+
     if util.IsSubdirectory(p.root, fullChildPath) {
-      p.internalData[path.Base(fullChildPath)] = p.loader.load(fullChildPath, client)
+      p.internalData[path.Base(fullChildPath)], _ = p.loader.load(fullChildPath, client)
     }
 
   case cache.TreeCacheEventNodeRemoved:
@@ -55,19 +61,35 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 
 func NewZkWatchedMap(
   client curator.CuratorFramework,
-  path string,
-  loader MapLoader) (*ZkWatchedMap) {
+  root string,
+  loader MapLoader) (*ZkWatchedMap, error) {
 
   internalData := make(map[string]interface{})
 
-  node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector)
-  node.SetCreateParentNodes(true)
-  node.SetMaxDepth(1)
-  node.SetCacheData(false)
-  node.Listenable().AddListener(NewChildLoader(internalData, loader, path))
+  node := cache.NewTreeCache(client, root, cache.DefaultTreeCacheSelector).
+    SetCreateParentNodes(true).
+    SetMaxDepth(1).
+    SetCacheData(false)
+  node.Listenable().AddListener(NewChildLoader(internalData, loader, root))
   node.Start()
 
-  return &ZkWatchedMap{node: node, client: client, path: path, loader: loader, internalData: internalData}
+  initialChildren, err := client.GetChildren().ForPath(root)
+
+  if err != nil {
+    return nil, err
+  }
+
+  for _, element := range initialChildren {
+    value, loadError := loader.load(path.Join(root, element), client)
+
+    if loadError != nil {
+      return nil, loadError
+    }
+
+    internalData[path.Base(element)] = value
+  }
+
+  return &ZkWatchedMap{node: node, client: client, Root: root, loader: loader, internalData: internalData}, nil
 }
 
 //  TODO is there some equivalent to Java's map interface I can use as a reference for naming here?
@@ -88,7 +110,7 @@ func (p *ZkWatchedMap) KeySet() []string {
   //  TODO I really hope there's a better way to get the keySet of a map, this is horrifying
   keys := make([]string, len(p.internalData))
   i := 0
-  for k, _ := range p.internalData {
+  for k := range p.internalData {
     keys[i] = k
     i++
   }
