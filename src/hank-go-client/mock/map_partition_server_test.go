@@ -4,9 +4,9 @@ import (
 	"testing"
 	"git.apache.org/thrift.git/lib/go/thrift"
 	"sync"
-	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"time"
 	"github.com/stretchr/testify/assert"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 const PARTITION_SERVER_ADDRESS = "127.0.0.1:56783"

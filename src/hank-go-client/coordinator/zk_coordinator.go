@@ -1,8 +1,8 @@
 package coordinator
 
 import (
-  "github.com/curator-go/curator"
   "fmt"
+  "github.com/curator-go/curator"
 )
 
 type ZkCoordinator struct {

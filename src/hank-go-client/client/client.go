@@ -1,12 +1,12 @@
-package hank_go_client
+package client
 
 import (
 	"github.com/samuel/go-zookeeper/zk"
 	"time"
 	"fmt"
-	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/liveramp/hank-go-client/mock"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
+	"hank-go-client/mock"
 )
 
 type HankSmartClient struct {

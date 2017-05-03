@@ -2,9 +2,9 @@ package coordinator
 
 import (
   "testing"
-  "github.com/liveramp/hank-go-client/fixtures"
   "github.com/stretchr/testify/assert"
   "fmt"
+  "hank-go-client/fixtures"
 )
 
 func TestZkCoordinator(t *testing.T){

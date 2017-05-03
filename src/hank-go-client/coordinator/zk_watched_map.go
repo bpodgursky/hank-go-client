@@ -4,8 +4,8 @@ import (
   "github.com/curator-go/curator/recipes/cache"
   "github.com/curator-go/curator"
   "path"
-  "github.com/liveramp/hank-go-client/util"
   "fmt"
+  "hank-go-client/util"
 )
 
 type MapLoader interface {

@@ -6,9 +6,9 @@ import (
   "github.com/curator-go/curator"
   "time"
   "github.com/stretchr/testify/assert"
-  "github.com/liveramp/hank-go-client/fixtures"
   "path"
   "reflect"
+  "hank-go-client/fixtures"
 )
 
 func TestLocalZkServer(t *testing.T) {
