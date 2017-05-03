@@ -3,8 +3,8 @@ package coordinator
 import (
   "testing"
   "github.com/stretchr/testify/assert"
-  "fmt"
   "hank-go-client/fixtures"
+  "time"
 )
 
 func TestZkCoordinator(t *testing.T){
@@ -26,7 +26,6 @@ func TestZkCoordinator(t *testing.T){
   _, createError := zkCoordinator.addDomainGroup("group1")
 
   if createError != nil {
-    fmt.Println(createError)
     assert.Fail(t, "Error adding domain group")
   }
 
@@ -37,7 +36,6 @@ func TestZkCoordinator(t *testing.T){
   //  make sure this one picked up the message
   fixtures.WaitUntilOrDie(t, func() bool{
     domainGroup := zkCoordinator3.getDomainGroup("group1")
-    fmt.Println("waiting on", domainGroup)
     return domainGroup != nil
   })
 
@@ -51,6 +49,9 @@ func TestZkCoordinator(t *testing.T){
   zkCoordinator2, _ := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
   group2 := zkCoordinator2.getDomainGroup("group1")
   assert.Equal(t, "group1", group2.getName())
+
+  //  let messages flush to make shutdown cleaner.  dunno a better way.
+  time.Sleep(time.Second)
 
   fixtures.TeardownZookeeper(cluster, client)
 }

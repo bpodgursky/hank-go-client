@@ -1,7 +1,6 @@
 package coordinator
 
 import (
-  "fmt"
   "github.com/curator-go/curator"
 )
 
@@ -47,8 +46,6 @@ func (p *ZkCoordinator) getRingGroup(name string) RingGroup {
 }
 
 func (p *ZkCoordinator) getDomainGroup(name string) DomainGroup {
-
-  fmt.Println("found keys", p.domainGroups.KeySet())
 
   domainGroup := p.domainGroups.Get(name)
 

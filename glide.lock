@@ -1,5 +1,5 @@
-hash: cc804f2f54f6ec9d26681839f44b3dd278520cd82992df959c2e605f7cf5a221
-updated: 2017-05-02T19:30:10.924373536-07:00
+hash: 3da6fcb48730ad31fb978c3f64831791a90fc019dd110a45410b25cff027a3f7
+updated: 2017-05-02T20:56:21.030780279-07:00
 imports:
 - name: git.apache.org/thrift.git
   version: 19baeefd8c38d62085891d7956349601f79448b3
@@ -40,6 +40,8 @@ imports:
   - suite
 - name: github.com/tevino/abool
   version: 3c25f2fe7cd0ef3eabefce1d90efd69a65d35b12
+- name: github.com/tevino/curator
+  version: edd7b5ca99289ab54cad1413f483b203a0d11c1a
 - name: go4.org
   version: cababa4e44509c51b2718c014b5e522659af5d1b
   subpackages:

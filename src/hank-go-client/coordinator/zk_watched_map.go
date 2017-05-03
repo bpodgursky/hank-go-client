@@ -4,7 +4,6 @@ import (
   "github.com/curator-go/curator/recipes/cache"
   "github.com/curator-go/curator"
   "path"
-  "fmt"
   "hank-go-client/util"
 )
 
@@ -33,8 +32,6 @@ func NewChildLoader(internalData map[string]interface{}, loader MapLoader, root 
 
 func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.TreeCacheEvent) error {
 
-  fmt.Println("got event type", event.Type)
-
   switch event.Type {
 
   case cache.TreeCacheEventNodeUpdated:
@@ -42,8 +39,6 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
   case cache.TreeCacheEventNodeAdded:
 
     fullChildPath := event.Data.Path()
-
-    fmt.Println("on path", event.Data.Path())
 
     if util.IsSubdirectory(p.root, fullChildPath) {
       p.internalData[path.Base(fullChildPath)], _ = p.loader.load(fullChildPath, client)
@@ -66,12 +61,27 @@ func NewZkWatchedMap(
 
   internalData := make(map[string]interface{})
 
+  parentExists, existsErr := client.CheckExists().ForPath(root)
+  if existsErr != nil{
+    return nil, existsErr
+  }
+
+  if parentExists == nil {
+    _, createErr := client.Create().CreatingParentsIfNeeded().ForPath(root)
+    if createErr != nil{
+      return nil, createErr
+    }
+  }
+
   node := cache.NewTreeCache(client, root, cache.DefaultTreeCacheSelector).
-    SetCreateParentNodes(true).
     SetMaxDepth(1).
     SetCacheData(false)
   node.Listenable().AddListener(NewChildLoader(internalData, loader, root))
-  node.Start()
+  startError := node.Start()
+
+  if startError != nil {
+    return nil, startError
+  }
 
   initialChildren, err := client.GetChildren().ForPath(root)
 
