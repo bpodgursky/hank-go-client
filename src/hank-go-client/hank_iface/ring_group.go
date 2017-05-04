@@ -1,13 +1,11 @@
 package hank_iface
 
 type RingGroup interface {
+  getName() string
 
-	getName() string
+  getRings() []Ring
 
-	getRings() []Ring
+  addRing(ringNum int) Ring
 
-	addRing(ringNum int) Ring
-
-	//	stub
-
+  //	stub
 }

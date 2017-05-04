@@ -22,7 +22,7 @@ func TestMapPartitionServer(t *testing.T) {
 	testData["key1"] = "value1"
 	testData["key2"] = "value2"
 	testData["key3"] = "value3"
-
+  
 	handler := NewPartitionServerHandler(testData)
 
 	//	set up simple mock thrift partition server

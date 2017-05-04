@@ -14,7 +14,7 @@ type ZkWatchedNode struct {
 
 func NewZkWatchedNode(client curator.CuratorFramework, path string) (r *ZkWatchedNode) {
 
-  SafeEnsureParents(client, path)
+	SafeEnsureParents(client, path)
 
   node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector)
 	err := node.Start()
