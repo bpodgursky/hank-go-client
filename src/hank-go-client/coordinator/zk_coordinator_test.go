@@ -10,8 +10,6 @@ import (
 func TestZkCoordinator(t *testing.T){
   cluster, client := fixtures.SetupZookeeper(t)
 
-  //  TODO try with https://github.com/curator-go/curator/pull/5
-
   zkCoordinator, err1 := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
   zkCoordinator3, err2 := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
 
@@ -31,7 +29,7 @@ func TestZkCoordinator(t *testing.T){
 
   //  check the name
   group := zkCoordinator.getDomainGroup("group1")
-  assert.Equal(t, "group1", group.getName())
+  assert.Equal(t, "group1", group.GetName())
 
   //  make sure this one picked up the message
   fixtures.WaitUntilOrDie(t, func() bool{
@@ -48,7 +46,7 @@ func TestZkCoordinator(t *testing.T){
   //  get the same thing with a fresh coordinator
   zkCoordinator2, _ := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
   group2 := zkCoordinator2.getDomainGroup("group1")
-  assert.Equal(t, "group1", group2.getName())
+  assert.Equal(t, "group1", group2.GetName())
 
   //  let messages flush to make shutdown cleaner.  dunno a better way.
   time.Sleep(time.Second)

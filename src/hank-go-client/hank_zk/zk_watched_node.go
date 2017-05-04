@@ -1,8 +1,9 @@
-package coordinator
+package hank_zk
 
 import (
 	"github.com/curator-go/curator"
 	"github.com/curator-go/curator/recipes/cache"
+	"fmt"
 )
 
 type ZkWatchedNode struct {
@@ -11,18 +12,20 @@ type ZkWatchedNode struct {
 	path   string
 }
 
-func NewZkWatchedNode(client curator.CuratorFramework, path string, create bool) (r *ZkWatchedNode) {
+func NewZkWatchedNode(client curator.CuratorFramework, path string) (r *ZkWatchedNode) {
 
-	node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector)
-	node.SetCreateParentNodes(create)
-	node.SetMaxDepth(0)
-	node.Start()
+  SafeEnsureParents(client, path)
+
+  node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector)
+	err := node.Start()
+
+	fmt.Println(err)
 
 	return &ZkWatchedNode{node: node, client: client, path: path}
 }
 
 func (p *ZkWatchedNode) Get() ([]byte, error) {
-	data, err := p.node.CurrentData(p.path);
+	data, err := p.node.CurrentData(p.path)
 
 	if err != nil {
 		return nil, err

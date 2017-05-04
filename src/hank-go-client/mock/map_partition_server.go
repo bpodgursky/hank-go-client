@@ -47,8 +47,7 @@ func Server(
 	handler *MapPartitionServerHandler,
 	transportFactory thrift.TTransportFactory,
 	protocolFactory thrift.TProtocolFactory,
-	addr string,
-	secure bool) (*thrift.TSimpleServer) {
+	addr string) (*thrift.TSimpleServer) {
 
 	var transport, _ = thrift.NewTServerSocket(addr)
 

@@ -31,8 +31,7 @@ func TestMapPartitionServer(t *testing.T) {
 		handler,
 		thrift.NewTTransportFactory(),
 		thrift.NewTCompactProtocolFactory(),
-		PARTITION_SERVER_ADDRESS,
-		false)
+		PARTITION_SERVER_ADDRESS)
 
 	wg.Add(1)
 	go func() {

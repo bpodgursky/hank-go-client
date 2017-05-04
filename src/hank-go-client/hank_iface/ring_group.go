@@ -1,4 +1,4 @@
-package coordinator
+package hank_iface
 
 type RingGroup interface {
 
@@ -7,5 +7,7 @@ type RingGroup interface {
 	getRings() []Ring
 
 	addRing(ringNum int) Ring
+
+	//	stub
 
 }

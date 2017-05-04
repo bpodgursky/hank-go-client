@@ -1,10 +1,10 @@
-package coordinator
+package hank_zk
 
 import (
   "github.com/curator-go/curator/recipes/cache"
   "github.com/curator-go/curator"
   "path"
-  "hank-go-client/util"
+  "hank-go-client/hank_util"
 )
 
 type MapLoader interface {
@@ -40,7 +40,7 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 
     fullChildPath := event.Data.Path()
 
-    if util.IsSubdirectory(p.root, fullChildPath) {
+    if hank_util.IsSubdirectory(p.root, fullChildPath) {
       p.internalData[path.Base(fullChildPath)], _ = p.loader.load(fullChildPath, client)
     }
 
@@ -61,17 +61,7 @@ func NewZkWatchedMap(
 
   internalData := make(map[string]interface{})
 
-  parentExists, existsErr := client.CheckExists().ForPath(root)
-  if existsErr != nil{
-    return nil, existsErr
-  }
-
-  if parentExists == nil {
-    _, createErr := client.Create().CreatingParentsIfNeeded().ForPath(root)
-    if createErr != nil{
-      return nil, createErr
-    }
-  }
+  SafeEnsureParents(client, root)
 
   node := cache.NewTreeCache(client, root, cache.DefaultTreeCacheSelector).
     SetMaxDepth(1).

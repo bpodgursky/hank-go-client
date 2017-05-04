@@ -1,4 +1,4 @@
-package coordinator
+package hank_zk
 
 import (
   "testing"
@@ -9,6 +9,9 @@ import (
   "path"
   "reflect"
   "hank-go-client/fixtures"
+  "github.com/liveramp/hank/hank-core/src/main/go/hank"
+  "hank-go-client/hank_thrift"
+  "hank-go-client/hank_util"
 )
 
 func TestLocalZkServer(t *testing.T) {
@@ -32,11 +35,10 @@ func TestCurator(t *testing.T) {
   fixtures.TeardownZookeeper(cluster, client)
 }
 
-
 func TestZkWatchedNode(t *testing.T) {
   cluster, client := fixtures.SetupZookeeper(t)
 
-  wn := NewZkWatchedNode(client, "/some/location", true)
+  wn := NewZkWatchedNode(client, "/some/location")
   time.Sleep(time.Second)
 
   wn.Set([]byte("data1"))
@@ -50,7 +52,7 @@ func TestZkWatchedNode(t *testing.T) {
 
 }
 
-type StringValueLoader struct {}
+type StringValueLoader struct{}
 
 func (p *StringValueLoader) load(path string, client curator.CuratorFramework) (interface{}, error) {
   data, error := client.GetData().ForPath(path)
@@ -86,6 +88,31 @@ func TestZkWatchedMap(t *testing.T) {
   client.Delete().ForPath(child1Path)
   fixtures.WaitUntilOrDie(t, func() bool {
     return wmap.Get("child1") == nil
+  })
+
+  fixtures.TeardownZookeeper(cluster, client)
+}
+
+func TestZkWatchedThriftNode(t *testing.T) {
+  cluster, client := fixtures.SetupZookeeper(t)
+
+  node := NewZkWatchedNode(client, "/some/path")
+  node2 := NewZkWatchedNode(client, "/some/path")
+
+  testData := hank.NewDomainGroupMetadata()
+  testData.DomainVersions = make(map[int32]int32)
+  testData.DomainVersions[0] = 1
+
+  ctx := hank_thrift.NewThreadCtx()
+  set := hank_thrift.SetThrift(ctx, node, testData)
+
+  if set != nil{
+    assert.Fail(t, "Failed")
+  }
+
+  fixtures.WaitUntilOrDie(t, func() bool{
+    val, _ := hank_util.GetDomainGroupMetadata(ctx, node2)
+    return reflect.DeepEqual(val, testData)
   })
 
   fixtures.TeardownZookeeper(cluster, client)

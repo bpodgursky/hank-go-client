@@ -2,11 +2,14 @@ package coordinator
 
 import (
   "github.com/curator-go/curator"
+  "hank-go-client/hank_zk"
+  "hank-go-client/hank_iface"
+  "hank-go-client/hank_util"
 )
 
 type ZkCoordinator struct {
-  ringGroups   *ZkWatchedMap
-  domainGroups *ZkWatchedMap
+  ringGroups   *hank_zk.ZkWatchedMap
+  domainGroups *hank_zk.ZkWatchedMap
   client       curator.CuratorFramework
 }
 
@@ -14,8 +17,8 @@ func NewZkCoordinator(client curator.CuratorFramework,
   ringGroupsRoot string,
   domainGroupsRoot string) (*ZkCoordinator, error) {
 
-  ringGroups, rgError := NewZkWatchedMap(client, ringGroupsRoot, &ZkRingGroupLoader{})
-  domainGroups, dmError := NewZkWatchedMap(client, domainGroupsRoot, &ZkDomainGroupLoader{})
+  ringGroups, rgError := hank_zk.NewZkWatchedMap(client, ringGroupsRoot, &ZkRingGroupLoader{})
+  domainGroups, dmError := hank_zk.NewZkWatchedMap(client, domainGroupsRoot, &ZkDomainGroupLoader{})
 
   if rgError != nil {
     return nil, rgError
@@ -33,42 +36,22 @@ func NewZkCoordinator(client curator.CuratorFramework,
 
 }
 
-func (p *ZkCoordinator) getRingGroup(name string) RingGroup {
-
-  ringGroup := p.ringGroups.Get(name)
-  original, ok := ringGroup.(RingGroup)
-
-  if ok {
-    return original
-  }
-
-  return nil
+func (p *ZkCoordinator) getRingGroup(name string) hank_iface.RingGroup {
+  return hank_util.GetRingGroup(name, p.domainGroups.Get)
 }
 
-func (p *ZkCoordinator) getDomainGroup(name string) DomainGroup {
-
-  domainGroup := p.domainGroups.Get(name)
-
-  if domainGroup == nil {
-    return nil
-  }
-
-  original, ok := domainGroup.(DomainGroup)
-
-  if ok {
-    return original
-  }
-
-  return nil
+func (p *ZkCoordinator) getDomainGroup(name string) hank_iface.DomainGroup {
+  return hank_util.GetDomainGroup(name, p.domainGroups.Get)
 }
 
-func (p *ZkCoordinator) addDomainGroup(name string) (DomainGroup, error) {
+func (p *ZkCoordinator) addDomainGroup(name string) (hank_iface.DomainGroup, error) {
 
-  group, error := CreateZkDomainGroup(p.client, name, p.domainGroups.Root)
-  if error != nil {
-    return nil, error
+  group, err := CreateZkDomainGroup(p.client, name, p.domainGroups.Root)
+  if err != nil {
+    return nil, err
   }
 
   p.domainGroups.Put(name, group)
   return group, nil
+
 }
