@@ -7,13 +7,13 @@ import (
   "time"
 )
 
-func TestZkCoordinator(t *testing.T){
+func TestZkCoordinator(t *testing.T) {
   cluster, client := fixtures.SetupZookeeper(t)
 
   zkCoordinator, err1 := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
   zkCoordinator3, err2 := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
 
-  if err1 != nil{
+  if err1 != nil {
     assert.Fail(t, "Error initializing coordinator 1")
   }
 
@@ -32,7 +32,7 @@ func TestZkCoordinator(t *testing.T){
   assert.Equal(t, "group1", group.GetName())
 
   //  make sure this one picked up the message
-  fixtures.WaitUntilOrDie(t, func() bool{
+  fixtures.WaitUntilOrDie(t, func() bool {
     domainGroup := zkCoordinator3.getDomainGroup("group1")
     return domainGroup != nil
   })
@@ -40,7 +40,7 @@ func TestZkCoordinator(t *testing.T){
   //  can't create a second one
   _, err := zkCoordinator.addDomainGroup("group1")
   if err == nil {
-   assert.Fail(t, "Should have thrown an error")
+    assert.Fail(t, "Should have thrown an error")
   }
 
   //  get the same thing with a fresh coordinator
@@ -53,4 +53,3 @@ func TestZkCoordinator(t *testing.T){
 
   fixtures.TeardownZookeeper(cluster, client)
 }
-

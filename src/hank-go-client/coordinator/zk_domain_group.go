@@ -48,7 +48,6 @@ func (p *ZkDomainGroupLoader) load(fullPath string, client curator.CuratorFramew
   return LoadZkDomainGroup(client, path.Base(fullPath), path.Dir(fullPath))
 }
 
-
 //  public stuff
 
 func (p *ZkDomainGroup) GetName() string {

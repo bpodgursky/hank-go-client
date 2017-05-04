@@ -106,11 +106,11 @@ func TestZkWatchedThriftNode(t *testing.T) {
   ctx := hank_thrift.NewThreadCtx()
   set := hank_thrift.SetThrift(ctx, node, testData)
 
-  if set != nil{
+  if set != nil {
     assert.Fail(t, "Failed")
   }
 
-  fixtures.WaitUntilOrDie(t, func() bool{
+  fixtures.WaitUntilOrDie(t, func() bool {
     val, _ := hank_util.GetDomainGroupMetadata(ctx, node2)
     return reflect.DeepEqual(val, testData)
   })

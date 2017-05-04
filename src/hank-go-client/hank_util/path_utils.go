@@ -5,7 +5,7 @@ import (
   "path/filepath"
 )
 
-func IsSubdirectory(root string, otherPath string) bool{
+func IsSubdirectory(root string, otherPath string) bool {
 
   cleanRoot := path.Clean(root)
   cleanRel := path.Clean(otherPath)
@@ -18,4 +18,3 @@ func IsSubdirectory(root string, otherPath string) bool{
   return path.Join(cleanRoot, rel) == cleanRel
 
 }
-

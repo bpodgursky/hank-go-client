@@ -3,11 +3,11 @@ package hank_thrift
 import "git.apache.org/thrift.git/lib/go/thrift"
 
 type ThreadCtx struct {
-  Serializer *thrift.TSerializer
+  Serializer   *thrift.TSerializer
   Deserializer *thrift.TDeserializer
 }
 
-func NewThreadCtx() *ThreadCtx{
+func NewThreadCtx() *ThreadCtx {
 
   serializer := thrift.NewTSerializer()
   serializer.Protocol = thrift.NewTCompactProtocol(serializer.Transport)
@@ -16,31 +16,31 @@ func NewThreadCtx() *ThreadCtx{
   deserializer.Protocol = thrift.NewTCompactProtocol(deserializer.Transport)
 
   return &ThreadCtx{
-    Serializer:serializer,
-    Deserializer:deserializer,
+    Serializer:   serializer,
+    Deserializer: deserializer,
   }
 
 }
 
-func ReadThrift(ctx *ThreadCtx, node WatchedNode, emptyStruct thrift.TStruct) error{
+func ReadThrift(ctx *ThreadCtx, node WatchedNode, emptyStruct thrift.TStruct) error {
 
   data, error := node.Get()
-  if error != nil{
+  if error != nil {
     return error
   }
 
   deserErr := ctx.Deserializer.Read(emptyStruct, data)
-  if deserErr != nil{
+  if deserErr != nil {
     return error
   }
 
   return nil
 }
 
-func SetThrift(ctx *ThreadCtx, node WatchedNode, tStruct thrift.TStruct) error{
+func SetThrift(ctx *ThreadCtx, node WatchedNode, tStruct thrift.TStruct) error {
 
   bytes, err := ctx.Serializer.Write(tStruct)
-  if err != nil{
+  if err != nil {
     return err
   }
 

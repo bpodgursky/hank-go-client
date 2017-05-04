@@ -1,12 +1,12 @@
 package fixtures
 
 import (
-	"time"
-	"errors"
-	"github.com/cenkalti/backoff"
-	"github.com/stretchr/testify/assert"
-	"testing"
-	"fmt"
+  "time"
+  "errors"
+  "github.com/cenkalti/backoff"
+  "github.com/stretchr/testify/assert"
+  "testing"
+  "fmt"
   "github.com/samuel/go-zookeeper/zk"
   "github.com/curator-go/curator"
   "strconv"
@@ -14,21 +14,21 @@ import (
 
 func WaitUntilOrDie(t *testing.T, expectTrue func() bool) {
 
-	backoffStrat := backoff.NewExponentialBackOff()
-	backoffStrat.MaxElapsedTime = time.Second * 10
+  backoffStrat := backoff.NewExponentialBackOff()
+  backoffStrat.MaxElapsedTime = time.Second * 10
 
-	err := backoff.Retry(func() error{
-		val := expectTrue()
+  err := backoff.Retry(func() error {
+    val := expectTrue()
 
-		if !val {
-			return errors.New("false")
-		}
+    if !val {
+      return errors.New("false")
+    }
 
-		return nil
+    return nil
 
-	}, backoffStrat)
+  }, backoffStrat)
 
-	assert.Nil(t, err)
+  assert.Nil(t, err)
 
   fmt.Println("Assertion success!")
 
@@ -58,5 +58,3 @@ func TeardownZookeeper(cluster *zk.TestCluster, client curator.CuratorFramework)
   client.Close()
   cluster.StopAllServers()
 }
-
-

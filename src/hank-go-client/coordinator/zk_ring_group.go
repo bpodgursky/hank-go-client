@@ -6,8 +6,8 @@ type ZkRingGroup struct {
   ringGroupPath string
 }
 
-type ZkRingGroupLoader struct {}
+type ZkRingGroupLoader struct{}
 
 func (p *ZkRingGroupLoader) load(path string, client curator.CuratorFramework) (interface{}, error) {
-  return &ZkRingGroup{ringGroupPath:path}, nil
+  return &ZkRingGroup{ringGroupPath: path}, nil
 }

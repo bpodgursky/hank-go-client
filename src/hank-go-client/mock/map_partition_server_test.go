@@ -1,58 +1,58 @@
 package mock
 
 import (
-	"testing"
-	"git.apache.org/thrift.git/lib/go/thrift"
-	"sync"
-	"time"
-	"github.com/stretchr/testify/assert"
-	"github.com/liveramp/hank/hank-core/src/main/go/hank"
+  "testing"
+  "git.apache.org/thrift.git/lib/go/thrift"
+  "sync"
+  "time"
+  "github.com/stretchr/testify/assert"
+  "github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 const PARTITION_SERVER_ADDRESS = "127.0.0.1:56783"
 
-func toBytes(str string)(b []byte){
-	return []byte(str)
+func toBytes(str string) (b []byte) {
+  return []byte(str)
 }
 
 func TestMapPartitionServer(t *testing.T) {
 
-	testData := make(map[string]string)
+  testData := make(map[string]string)
 
-	testData["key1"] = "value1"
-	testData["key2"] = "value2"
-	testData["key3"] = "value3"
-  
-	handler := NewPartitionServerHandler(testData)
+  testData["key1"] = "value1"
+  testData["key2"] = "value2"
+  testData["key3"] = "value3"
 
-	//	set up simple mock thrift partition server
-	var wg sync.WaitGroup
-	server := Server(
-		handler,
-		thrift.NewTTransportFactory(),
-		thrift.NewTCompactProtocolFactory(),
-		PARTITION_SERVER_ADDRESS)
+  handler := NewPartitionServerHandler(testData)
 
-	wg.Add(1)
-	go func() {
-		server.Serve()
-		wg.Done()
-	}()
+  //	set up simple mock thrift partition server
+  var wg sync.WaitGroup
+  server := Server(
+    handler,
+    thrift.NewTTransportFactory(),
+    thrift.NewTCompactProtocolFactory(),
+    PARTITION_SERVER_ADDRESS)
 
-	time.Sleep(time.Second)
+  wg.Add(1)
+  go func() {
+    server.Serve()
+    wg.Done()
+  }()
 
-	var transport, _ = thrift.NewTSocket(PARTITION_SERVER_ADDRESS)
-	transport.Open()
+  time.Sleep(time.Second)
 
-	client := hank.NewPartitionServerClientFactory(
-		thrift.NewTTransportFactory().GetTransport(transport),
-		thrift.NewTCompactProtocolFactory())
+  var transport, _ = thrift.NewTSocket(PARTITION_SERVER_ADDRESS)
+  transport.Open()
 
-	result, _ := client.Get(0, toBytes("key1"))
-	assert.Equal(t, toBytes("value1"), result.Value)
+  client := hank.NewPartitionServerClientFactory(
+    thrift.NewTTransportFactory().GetTransport(transport),
+    thrift.NewTCompactProtocolFactory())
 
-	server.Stop()
+  result, _ := client.Get(0, toBytes("key1"))
+  assert.Equal(t, toBytes("value1"), result.Value)
 
-	wg.Wait()
+  server.Stop()
+
+  wg.Wait()
 
 }
