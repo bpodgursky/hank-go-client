@@ -5,29 +5,39 @@ import (
   "github.com/curator-go/curator"
   "path"
   "hank-go-client/hank_util"
+  "hank-go-client/hank_thrift"
+  "sync"
 )
 
-type MapLoader interface {
-  load(path string, client curator.CuratorFramework) (interface{}, error)
-}
+//type MapLoader interface {
+//  load(path string, client curator.CuratorFramework) (interface{}, error)
+//}
+
+type Loader func(ctx *hank_thrift.ThreadCtx, path string, client curator.CuratorFramework)(interface{}, error)
 
 type ZkWatchedMap struct {
   Root string
 
   node         *cache.TreeCache
   client       curator.CuratorFramework
-  loader       MapLoader
+  loader       Loader
   internalData map[string]interface{}
 }
 
 type ChildLoader struct {
   internalData map[string]interface{}
-  loader       MapLoader
+  loader       Loader
   root         string
+
+  ctx          *hank_thrift.ThreadCtx
+  ctxLock      *sync.Mutex
 }
 
-func NewChildLoader(internalData map[string]interface{}, loader MapLoader, root string) *ChildLoader {
-  return &ChildLoader{internalData: internalData, loader: loader, root: root}
+func NewChildLoader(internalData map[string]interface{}, loader Loader, root string) *ChildLoader {
+
+  ctx := hank_thrift.NewThreadCtx()
+
+  return &ChildLoader{internalData: internalData, loader: loader, root: root, ctx: ctx, ctxLock: &sync.Mutex{}}
 }
 
 func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.TreeCacheEvent) error {
@@ -41,7 +51,8 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
     fullChildPath := event.Data.Path()
 
     if hank_util.IsSubdirectory(p.root, fullChildPath) {
-      p.internalData[path.Base(fullChildPath)], _ = p.loader.load(fullChildPath, client)
+
+      p.internalData[path.Base(fullChildPath)], _ = p.loader(p.ctx, fullChildPath, client)
     }
 
   case cache.TreeCacheEventNodeRemoved:
@@ -57,11 +68,11 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 func NewZkWatchedMap(
   client curator.CuratorFramework,
   root string,
-  loader MapLoader) (*ZkWatchedMap, error) {
+  loader Loader) (*ZkWatchedMap, error) {
 
   internalData := make(map[string]interface{})
 
-  SafeEnsureParents(client, root)
+  SafeEnsureParents(client, curator.PERSISTENT, root)
 
   node := cache.NewTreeCache(client, root, cache.DefaultTreeCacheSelector).
     SetMaxDepth(1).
@@ -79,8 +90,10 @@ func NewZkWatchedMap(
     return nil, err
   }
 
+  ctx := hank_thrift.NewThreadCtx()
+
   for _, element := range initialChildren {
-    value, loadError := loader.load(path.Join(root, element), client)
+    value, loadError := loader(ctx, path.Join(root, element), client)
 
     if loadError != nil {
       return nil, loadError

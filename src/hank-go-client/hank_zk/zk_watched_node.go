@@ -12,9 +12,9 @@ type ZkWatchedNode struct {
   path   string
 }
 
-func NewZkWatchedNode(client curator.CuratorFramework, path string) (r *ZkWatchedNode) {
+func NewZkWatchedNode(client curator.CuratorFramework, mode curator.CreateMode, path string) (r *ZkWatchedNode) {
 
-  SafeEnsureParents(client, path)
+  SafeEnsureParents(client, mode, path)
 
   node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector)
   err := node.Start()

@@ -21,7 +21,7 @@ func AssertExists(client curator.CuratorFramework, fullPath string) error {
   return nil
 }
 
-func SafeEnsureParents(client curator.CuratorFramework, root string) error {
+func SafeEnsureParents(client curator.CuratorFramework, mode curator.CreateMode, root string) error {
 
   parentExists, existsErr := client.CheckExists().ForPath(root)
   if existsErr != nil {
@@ -29,7 +29,7 @@ func SafeEnsureParents(client curator.CuratorFramework, root string) error {
   }
 
   if parentExists == nil {
-    _, createErr := client.Create().CreatingParentsIfNeeded().ForPath(root)
+    _, createErr := client.Create().WithMode(mode).CreatingParentsIfNeeded().ForPath(root)
     if createErr != nil {
       return createErr
     }

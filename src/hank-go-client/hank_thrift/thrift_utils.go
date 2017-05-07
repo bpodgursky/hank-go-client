@@ -1,13 +1,20 @@
 package hank_thrift
 
-import "git.apache.org/thrift.git/lib/go/thrift"
+import (
+  "git.apache.org/thrift.git/lib/go/thrift"
+  "sync"
+)
 
 type ThreadCtx struct {
-  Serializer   *thrift.TSerializer
-  Deserializer *thrift.TDeserializer
+  serializer   *thrift.TSerializer
+  deserializer *thrift.TDeserializer
+
+  serializeLock *sync.Mutex
+  deserializeLock *sync.Mutex
 }
 
 func NewThreadCtx() *ThreadCtx {
+
 
   serializer := thrift.NewTSerializer()
   serializer.Protocol = thrift.NewTCompactProtocol(serializer.Transport)
@@ -16,30 +23,43 @@ func NewThreadCtx() *ThreadCtx {
   deserializer.Protocol = thrift.NewTCompactProtocol(deserializer.Transport)
 
   return &ThreadCtx{
-    Serializer:   serializer,
-    Deserializer: deserializer,
+    serializer:      serializer,
+    deserializer:    deserializer,
+    serializeLock:   &sync.Mutex{},
+    deserializeLock: &sync.Mutex{},
   }
 
 }
 
-func ReadThrift(ctx *ThreadCtx, node WatchedNode, emptyStruct thrift.TStruct) error {
+func (p *ThreadCtx) ReadThrift(node WatchedNode, emptyStruct thrift.TStruct) error {
 
-  data, error := node.Get()
-  if error != nil {
-    return error
+  p.deserializeLock.Lock()
+  defer p.deserializeLock.Unlock()
+
+  data, err := node.Get()
+  if err != nil {
+    return err
   }
 
-  deserErr := ctx.Deserializer.Read(emptyStruct, data)
+  return p.ReadThriftBytes(data, emptyStruct)
+}
+
+func (p *ThreadCtx) ReadThriftBytes(data []byte, emptyStruct thrift.TStruct) error{
+
+  deserErr := p.deserializer.Read(emptyStruct, data)
   if deserErr != nil {
-    return error
+    return deserErr
   }
 
   return nil
 }
 
-func SetThrift(ctx *ThreadCtx, node WatchedNode, tStruct thrift.TStruct) error {
+func (p *ThreadCtx) SetThrift(node WatchedNode, tStruct thrift.TStruct) error {
 
-  bytes, err := ctx.Serializer.Write(tStruct)
+  p.serializeLock.Lock()
+  defer p.serializeLock.Unlock()
+
+  bytes, err := p.serializer.Write(tStruct)
   if err != nil {
     return err
   }

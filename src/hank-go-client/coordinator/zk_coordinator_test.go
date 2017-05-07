@@ -21,31 +21,31 @@ func TestZkCoordinator(t *testing.T) {
     assert.Fail(t, "Error initializing coordinator 2")
   }
 
-  _, createError := zkCoordinator.addDomainGroup("group1")
+  _, createError := zkCoordinator.AddDomainGroup("group1")
 
   if createError != nil {
     assert.Fail(t, "Error adding domain group")
   }
 
   //  check the name
-  group := zkCoordinator.getDomainGroup("group1")
+  group := zkCoordinator.GetDomainGroup("group1")
   assert.Equal(t, "group1", group.GetName())
 
   //  make sure this one picked up the message
   fixtures.WaitUntilOrDie(t, func() bool {
-    domainGroup := zkCoordinator3.getDomainGroup("group1")
+    domainGroup := zkCoordinator3.GetDomainGroup("group1")
     return domainGroup != nil
   })
 
   //  can't create a second one
-  _, err := zkCoordinator.addDomainGroup("group1")
+  _, err := zkCoordinator.AddDomainGroup("group1")
   if err == nil {
     assert.Fail(t, "Should have thrown an error")
   }
 
   //  get the same thing with a fresh coordinator
   zkCoordinator2, _ := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
-  group2 := zkCoordinator2.getDomainGroup("group1")
+  group2 := zkCoordinator2.GetDomainGroup("group1")
   assert.Equal(t, "group1", group2.GetName())
 
   //  let messages flush to make shutdown cleaner.  dunno a better way.

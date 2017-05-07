@@ -23,13 +23,14 @@ func CreateZkDomainGroup(client curator.CuratorFramework, name string, rootPath 
 
   node := hank_zk.NewZkWatchedNode(
     client,
+    curator.PERSISTENT,
     metadataPath,
   )
 
   return &ZkDomainGroup{name: name, metadata: node}, nil
 }
 
-func LoadZkDomainGroup(client curator.CuratorFramework, name string, rootPath string) (*ZkDomainGroup, error) {
+func loadZkDomainGroupInternal(client curator.CuratorFramework, name string, rootPath string) (*ZkDomainGroup, error) {
 
   metadataPath := path.Join(rootPath, name)
 
@@ -38,14 +39,14 @@ func LoadZkDomainGroup(client curator.CuratorFramework, name string, rootPath st
     return nil, err
   }
 
-  node := hank_zk.NewZkWatchedNode(client, metadataPath)
+  node := hank_zk.NewZkWatchedNode(client, curator.PERSISTENT, metadataPath)
   return &ZkDomainGroup{name: name, metadata: node}, nil
 }
 
 type ZkDomainGroupLoader struct{}
 
-func (p *ZkDomainGroupLoader) load(fullPath string, client curator.CuratorFramework) (interface{}, error) {
-  return LoadZkDomainGroup(client, path.Base(fullPath), path.Dir(fullPath))
+func LoadZkDomainGroup(ctx *hank_thrift.ThreadCtx, fullPath string, client curator.CuratorFramework) (interface{}, error) {
+  return loadZkDomainGroupInternal(client, path.Base(fullPath), path.Dir(fullPath))
 }
 
 //  public stuff

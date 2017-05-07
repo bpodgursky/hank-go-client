@@ -6,6 +6,9 @@ import (
   "hank-go-client/hank_iface"
 )
 
+//  suuuuure
+type Getter func(name string) interface{}
+
 //  this file is the horrifying result of not having generics, as far as I can tell.  is there any way I can avoid
 //  declaring this for every single thrift type I want?  maybe we can template and autogenerate it?
 
@@ -13,7 +16,7 @@ import (
 
 func GetDomainGroupMetadata(ctx *hank_thrift.ThreadCtx, node hank_thrift.WatchedNode) (*hank.DomainGroupMetadata, error) {
   metadata := hank.NewDomainGroupMetadata()
-  error := hank_thrift.ReadThrift(ctx, node, metadata)
+  error := ctx.ReadThrift(node, metadata)
   if error != nil {
     return nil, error
   }
@@ -22,7 +25,7 @@ func GetDomainGroupMetadata(ctx *hank_thrift.ThreadCtx, node hank_thrift.Watched
 
 //  watched thrift map cast copypasta
 
-func GetDomainGroup(name string, get func(name string) interface{}) hank_iface.DomainGroup {
+func GetDomainGroup(name string, get Getter) hank_iface.DomainGroup {
   raw := get(name)
   original, ok := raw.(hank_iface.DomainGroup)
   if ok {
@@ -31,11 +34,20 @@ func GetDomainGroup(name string, get func(name string) interface{}) hank_iface.D
   return nil
 }
 
-func GetRingGroup(name string, get func(name string) interface{}) hank_iface.RingGroup {
+func GetRingGroup(name string, get Getter) hank_iface.RingGroup {
   raw := get(name)
   original, ok := raw.(hank_iface.RingGroup)
   if ok {
     return original
+  }
+  return nil
+}
+
+func GetClientMetadata(name string, get Getter) *hank.ClientMetadata {
+  raw := get(name)
+  original, ok := raw.(hank.ClientMetadata)
+  if ok {
+    return &original
   }
   return nil
 }

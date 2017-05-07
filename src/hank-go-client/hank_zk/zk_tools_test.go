@@ -38,7 +38,7 @@ func TestCurator(t *testing.T) {
 func TestZkWatchedNode(t *testing.T) {
   cluster, client := fixtures.SetupZookeeper(t)
 
-  wn := NewZkWatchedNode(client, "/some/location")
+  wn := NewZkWatchedNode(client, curator.PERSISTENT,"/some/location")
   time.Sleep(time.Second)
 
   wn.Set([]byte("data1"))
@@ -52,9 +52,7 @@ func TestZkWatchedNode(t *testing.T) {
 
 }
 
-type StringValueLoader struct{}
-
-func (p *StringValueLoader) load(path string, client curator.CuratorFramework) (interface{}, error) {
+func LoadString(ctx *hank_thrift.ThreadCtx, path string, client curator.CuratorFramework) (interface{}, error) {
   data, error := client.GetData().ForPath(path)
   return string(data), error
 }
@@ -64,7 +62,7 @@ func TestZkWatchedMap(t *testing.T) {
 
   root := "/some/path"
 
-  wmap, _ := NewZkWatchedMap(client, root, &StringValueLoader{})
+  wmap, _ := NewZkWatchedMap(client, root, LoadString)
   time.Sleep(time.Second)
 
   child1Path := path.Join(root, "child1")
@@ -96,15 +94,15 @@ func TestZkWatchedMap(t *testing.T) {
 func TestZkWatchedThriftNode(t *testing.T) {
   cluster, client := fixtures.SetupZookeeper(t)
 
-  node := NewZkWatchedNode(client, "/some/path")
-  node2 := NewZkWatchedNode(client, "/some/path")
+  node := NewZkWatchedNode(client, curator.PERSISTENT,"/some/path")
+  node2 := NewZkWatchedNode(client, curator.PERSISTENT, "/some/path")
 
   testData := hank.NewDomainGroupMetadata()
   testData.DomainVersions = make(map[int32]int32)
   testData.DomainVersions[0] = 1
 
   ctx := hank_thrift.NewThreadCtx()
-  set := hank_thrift.SetThrift(ctx, node, testData)
+  set := ctx.SetThrift(node, testData)
 
   if set != nil {
     assert.Fail(t, "Failed")
