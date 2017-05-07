@@ -3,7 +3,6 @@ package hank_zk
 import (
   "github.com/curator-go/curator"
   "github.com/curator-go/curator/recipes/cache"
-  "fmt"
 )
 
 type ZkWatchedNode struct {
@@ -12,16 +11,20 @@ type ZkWatchedNode struct {
   path   string
 }
 
-func NewZkWatchedNode(client curator.CuratorFramework, mode curator.CreateMode, path string) (r *ZkWatchedNode) {
+func NewZkWatchedNode(client curator.CuratorFramework, mode curator.CreateMode, path string) (*ZkWatchedNode, error) {
 
   SafeEnsureParents(client, mode, path)
 
-  node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector)
+  node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector).
+    SetMaxDepth(0).
+    SetCacheData(true)
   err := node.Start()
 
-  fmt.Println(err)
+  if err != nil {
+    return nil, err
+  }
 
-  return &ZkWatchedNode{node: node, client: client, path: path}
+  return &ZkWatchedNode{node: node, client: client, path: path}, nil
 }
 
 func (p *ZkWatchedNode) Get() ([]byte, error) {

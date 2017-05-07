@@ -31,20 +31,25 @@ func NewThreadCtx() *ThreadCtx {
 
 }
 
-func (p *ThreadCtx) ReadThrift(node WatchedNode, emptyStruct thrift.TStruct) error {
+type GetBytes func() ([]byte, error)
 
-  p.deserializeLock.Lock()
-  defer p.deserializeLock.Unlock()
+type SetBytes func(value []byte) error
 
-  data, err := node.Get()
+func (p *ThreadCtx) ReadThrift(get GetBytes, emptyStruct thrift.TStruct) error {
+
+  bytes, err := get()
+
   if err != nil {
     return err
   }
 
-  return p.ReadThriftBytes(data, emptyStruct)
+  return p.ReadThriftBytes(bytes, emptyStruct)
 }
 
 func (p *ThreadCtx) ReadThriftBytes(data []byte, emptyStruct thrift.TStruct) error{
+
+  p.deserializeLock.Lock()
+  defer p.deserializeLock.Unlock()
 
   deserErr := p.deserializer.Read(emptyStruct, data)
   if deserErr != nil {
@@ -54,7 +59,7 @@ func (p *ThreadCtx) ReadThriftBytes(data []byte, emptyStruct thrift.TStruct) err
   return nil
 }
 
-func (p *ThreadCtx) SetThrift(node WatchedNode, tStruct thrift.TStruct) error {
+func (p *ThreadCtx) SetThrift(set SetBytes, tStruct thrift.TStruct) error {
 
   p.serializeLock.Lock()
   defer p.serializeLock.Unlock()
@@ -64,10 +69,6 @@ func (p *ThreadCtx) SetThrift(node WatchedNode, tStruct thrift.TStruct) error {
     return err
   }
 
-  return node.Set(bytes)
+  return set(bytes)
 }
 
-type WatchedNode interface {
-  Get() ([]byte, error)
-  Set(value []byte) (error)
-}

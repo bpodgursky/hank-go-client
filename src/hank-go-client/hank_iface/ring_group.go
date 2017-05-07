@@ -1,6 +1,9 @@
 package hank_iface
 
-import "github.com/liveramp/hank/hank-core/src/main/go/hank"
+import (
+  "github.com/liveramp/hank/hank-core/src/main/go/hank"
+  "hank-go-client/hank_thrift"
+)
 
 type RingGroup interface {
 
@@ -10,7 +13,7 @@ type RingGroup interface {
 
   AddRing(ringNum int) Ring
 
-  RegisterClient(metadata hank.ClientMetadata) error
+  RegisterClient(ctx *hank_thrift.ThreadCtx, metadata hank.ClientMetadata) error
 
   //	stub
 }

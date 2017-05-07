@@ -9,10 +9,6 @@ import (
   "sync"
 )
 
-//type MapLoader interface {
-//  load(path string, client curator.CuratorFramework) (interface{}, error)
-//}
-
 type Loader func(ctx *hank_thrift.ThreadCtx, path string, client curator.CuratorFramework)(interface{}, error)
 
 type ZkWatchedMap struct {

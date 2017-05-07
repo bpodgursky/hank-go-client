@@ -14,9 +14,9 @@ type Getter func(name string) interface{}
 
 // watched node cast copypasta
 
-func GetDomainGroupMetadata(ctx *hank_thrift.ThreadCtx, node hank_thrift.WatchedNode) (*hank.DomainGroupMetadata, error) {
+func GetDomainGroupMetadata(ctx *hank_thrift.ThreadCtx, get hank_thrift.GetBytes) (*hank.DomainGroupMetadata, error) {
   metadata := hank.NewDomainGroupMetadata()
-  error := ctx.ReadThrift(node, metadata)
+  error := ctx.ReadThrift(get, metadata)
   if error != nil {
     return nil, error
   }

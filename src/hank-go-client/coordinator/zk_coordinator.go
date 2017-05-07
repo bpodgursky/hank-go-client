@@ -17,7 +17,7 @@ func NewZkCoordinator(client curator.CuratorFramework,
   ringGroupsRoot string,
   domainGroupsRoot string) (*ZkCoordinator, error) {
 
-  ringGroups, rgError := hank_zk.NewZkWatchedMap(client, ringGroupsRoot, LoadZkRingGroup)
+  ringGroups, rgError := hank_zk.NewZkWatchedMap(client, ringGroupsRoot, loadZkRingGroup)
   domainGroups, dmError := hank_zk.NewZkWatchedMap(client, domainGroupsRoot, LoadZkDomainGroup)
 
   if rgError != nil {

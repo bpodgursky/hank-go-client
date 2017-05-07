@@ -21,11 +21,14 @@ func CreateZkDomainGroup(client curator.CuratorFramework, name string, rootPath 
     return nil, err
   }
 
-  node := hank_zk.NewZkWatchedNode(
+  node, nodeErr := hank_zk.NewZkWatchedNode(
     client,
     curator.PERSISTENT,
     metadataPath,
   )
+  if nodeErr != nil{
+    return nil, nodeErr
+  }
 
   return &ZkDomainGroup{name: name, metadata: node}, nil
 }
@@ -39,7 +42,11 @@ func loadZkDomainGroupInternal(client curator.CuratorFramework, name string, roo
     return nil, err
   }
 
-  node := hank_zk.NewZkWatchedNode(client, curator.PERSISTENT, metadataPath)
+  node, nodeErr := hank_zk.NewZkWatchedNode(client, curator.PERSISTENT, metadataPath)
+  if nodeErr != nil {
+    return nil, nodeErr
+  }
+
   return &ZkDomainGroup{name: name, metadata: node}, nil
 }
 
@@ -56,5 +63,5 @@ func (p *ZkDomainGroup) GetName() string {
 }
 
 func (p *ZkDomainGroup) GetDomainVersions(ctx *hank_thrift.ThreadCtx) {
-  hank_util.GetDomainGroupMetadata(ctx, p.metadata)
+  hank_util.GetDomainGroupMetadata(ctx, p.metadata.Get)
 }
