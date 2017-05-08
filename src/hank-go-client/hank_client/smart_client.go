@@ -43,7 +43,7 @@ func GetClientMetadata() (*hank.ClientMetadata, error){
 
   metadata := hank.NewClientMetadata()
   metadata.Host = hostname
-  metadata.ConnectedAt = time.Now().Unix()
+  metadata.ConnectedAt = time.Now().Unix()*int64(1000)
   metadata.Type = "GolangHankSmartClient"
   metadata.Version = "lolidk"
 
