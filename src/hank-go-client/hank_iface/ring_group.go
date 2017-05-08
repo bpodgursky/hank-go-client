@@ -9,11 +9,13 @@ type RingGroup interface {
 
   GetName() string
 
-  GetRings() []Ring
+  //GetRings() []Ring
 
-  AddRing(ringNum int) Ring
+  //AddRing(ringNum int) Ring
 
-  RegisterClient(ctx *hank_thrift.ThreadCtx, metadata hank.ClientMetadata) error
+  RegisterClient(ctx *hank_thrift.ThreadCtx, metadata *hank.ClientMetadata) error
+
+  GetClients() []*hank.ClientMetadata
 
   //	stub
 }

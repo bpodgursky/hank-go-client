@@ -5,6 +5,7 @@ import (
   "github.com/stretchr/testify/assert"
   "hank-go-client/fixtures"
   "time"
+  "hank-go-client/hank_thrift"
 )
 
 func TestZkCoordinator(t *testing.T) {
@@ -12,6 +13,8 @@ func TestZkCoordinator(t *testing.T) {
 
   zkCoordinator, err1 := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
   zkCoordinator3, err2 := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
+
+  ctx := hank_thrift.NewThreadCtx()
 
   if err1 != nil {
     assert.Fail(t, "Error initializing coordinator 1")
@@ -21,7 +24,7 @@ func TestZkCoordinator(t *testing.T) {
     assert.Fail(t, "Error initializing coordinator 2")
   }
 
-  _, createError := zkCoordinator.AddDomainGroup("group1")
+  _, createError := zkCoordinator.AddDomainGroup(ctx, "group1")
 
   if createError != nil {
     assert.Fail(t, "Error adding domain group")
@@ -38,7 +41,7 @@ func TestZkCoordinator(t *testing.T) {
   })
 
   //  can't create a second one
-  _, err := zkCoordinator.AddDomainGroup("group1")
+  _, err := zkCoordinator.AddDomainGroup(ctx, "group1")
   if err == nil {
     assert.Fail(t, "Should have thrown an error")
   }
@@ -47,6 +50,9 @@ func TestZkCoordinator(t *testing.T) {
   zkCoordinator2, _ := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
   group2 := zkCoordinator2.GetDomainGroup("group1")
   assert.Equal(t, "group1", group2.GetName())
+
+
+  zkCoordinator.AddRingGroup(ctx, "rg1")
 
   //  let messages flush to make shutdown cleaner.  dunno a better way.
   time.Sleep(time.Second)

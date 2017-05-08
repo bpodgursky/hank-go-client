@@ -38,7 +38,7 @@ func TestCurator(t *testing.T) {
 func TestZkWatchedNode(t *testing.T) {
   cluster, client := fixtures.SetupZookeeper(t)
 
-  wn, _ := NewZkWatchedNode(client, curator.PERSISTENT,"/some/location")
+  wn, _ := NewZkWatchedNode(client, curator.PERSISTENT,"/some/location", []byte("0"))
   time.Sleep(time.Second)
 
   wn.Set([]byte("data1"))
@@ -94,8 +94,8 @@ func TestZkWatchedMap(t *testing.T) {
 func TestZkWatchedThriftNode(t *testing.T) {
   cluster, client := fixtures.SetupZookeeper(t)
 
-  node, _ := NewZkWatchedNode(client, curator.PERSISTENT,"/some/path")
-  node2, _ := NewZkWatchedNode(client, curator.PERSISTENT, "/some/path")
+  node, _ := NewZkWatchedNode(client, curator.PERSISTENT,"/some/path", []byte("0"))
+  node2, _ := NewZkWatchedNode(client, curator.PERSISTENT, "/some/path", []byte("0"))
 
   testData := hank.NewDomainGroupMetadata()
   testData.DomainVersions = make(map[int32]int32)
@@ -107,6 +107,7 @@ func TestZkWatchedThriftNode(t *testing.T) {
   if set != nil {
     assert.Fail(t, "Failed")
   }
+
 
   fixtures.WaitUntilOrDie(t, func() bool {
     val, _ := hank_util.GetDomainGroupMetadata(ctx, node2.Get)

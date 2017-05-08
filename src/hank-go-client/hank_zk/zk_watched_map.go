@@ -45,9 +45,7 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
   case cache.TreeCacheEventNodeAdded:
 
     fullChildPath := event.Data.Path()
-
     if hank_util.IsSubdirectory(p.root, fullChildPath) {
-
       p.internalData[path.Base(fullChildPath)], _ = p.loader(p.ctx, fullChildPath, client)
     }
 

@@ -61,14 +61,24 @@ func (p *ThreadCtx) ReadThriftBytes(data []byte, emptyStruct thrift.TStruct) err
 
 func (p *ThreadCtx) SetThrift(set SetBytes, tStruct thrift.TStruct) error {
 
-  p.serializeLock.Lock()
-  defer p.serializeLock.Unlock()
-
-  bytes, err := p.serializer.Write(tStruct)
+  bytes, err := p.ToBytes(tStruct)
   if err != nil {
     return err
   }
 
   return set(bytes)
+}
+
+func (p *ThreadCtx) ToBytes(tStruct thrift.TStruct) ([]byte, error){
+
+  p.serializeLock.Lock()
+  defer p.serializeLock.Unlock()
+
+  bytes, err := p.serializer.Write(tStruct)
+  if err != nil {
+    return nil, err
+  }
+
+  return bytes, nil
 }
 

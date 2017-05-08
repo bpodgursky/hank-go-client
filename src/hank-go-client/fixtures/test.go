@@ -12,7 +12,7 @@ import (
   "strconv"
 )
 
-func WaitUntilOrDie(t *testing.T, expectTrue func() bool) {
+func WaitUntilOrDie(t *testing.T, expectTrue func() bool) error {
 
   backoffStrat := backoff.NewExponentialBackOff()
   backoffStrat.MaxElapsedTime = time.Second * 10
@@ -21,17 +21,20 @@ func WaitUntilOrDie(t *testing.T, expectTrue func() bool) {
     val := expectTrue()
 
     if !val {
-      return errors.New("false")
+      return errors.New("failed to evaluate true")
     }
 
     return nil
 
   }, backoffStrat)
 
-  assert.Nil(t, err)
+  assert.True(t, err == nil)
 
-  fmt.Println("Assertion success!")
+  if err == nil {
+    fmt.Println("Assertion success!")
+  }
 
+  return err
 }
 
 type logWriter struct {
@@ -55,6 +58,6 @@ func SetupZookeeper(t *testing.T) (*zk.TestCluster, curator.CuratorFramework) {
 }
 
 func TeardownZookeeper(cluster *zk.TestCluster, client curator.CuratorFramework) {
-  client.Close()
+  client.ZookeeperClient().Close()
   cluster.StopAllServers()
 }
