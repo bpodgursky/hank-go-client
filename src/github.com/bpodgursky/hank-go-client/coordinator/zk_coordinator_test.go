@@ -3,11 +3,11 @@ package coordinator
 import (
 	"fmt"
 	"github.com/bpodgursky/hank-go-client/fixtures"
-	"github.com/bpodgursky/hank-go-client/hank_iface"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/bpodgursky/hank-go-client/iface"
 )
 
 func TestZkCoordinator(t *testing.T) {

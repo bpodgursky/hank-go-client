@@ -2,9 +2,7 @@ package watched_structs
 
 import (
 	"github.com/bpodgursky/hank-go-client/fixtures"
-	"github.com/bpodgursky/hank-go-client/hank_util"
 	"github.com/curator-go/curator"
-	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"github.com/samuel/go-zookeeper/zk"
 	"github.com/stretchr/testify/assert"
 	"path"
@@ -91,26 +89,22 @@ func TestZkWatchedMap(t *testing.T) {
 	fixtures.TeardownZookeeper(cluster, client)
 }
 
-func TestZkWatchedThriftNode(t *testing.T) {
+func TestZkWatchedNode2(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
 	node, _ := NewZkWatchedNode(client, curator.PERSISTENT, "/some/path", []byte("0"))
 	node2, _ := NewZkWatchedNode(client, curator.PERSISTENT, "/some/path", []byte("0"))
 
-	testData := hank.NewDomainGroupMetadata()
-	testData.DomainVersions = make(map[int32]int32)
-	testData.DomainVersions[0] = 1
+	testData := "Test String"
+  setErr := node.Set([]byte(testData))
 
-	ctx := serializers.NewThreadCtx()
-	set := ctx.SetThrift(node.Set, testData)
-
-	if set != nil {
+  if setErr != nil {
 		assert.Fail(t, "Failed")
 	}
 
 	fixtures.WaitUntilOrDie(t, func() bool {
-		val, _ := hank_util.GetDomainGroupMetadata(ctx, node2.Get)
-		return reflect.DeepEqual(val, testData)
+		val, _ := node2.Get()
+		return reflect.DeepEqual(string(val), testData)
 	})
 
 	fixtures.TeardownZookeeper(cluster, client)
