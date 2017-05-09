@@ -7,6 +7,7 @@ import (
   "path"
   "hank-go-client/hank_thrift"
   "hank-go-client/hank_iface"
+  "strconv"
 )
 
 const CLIENT_ROOT string = "c"
@@ -18,6 +19,7 @@ type ZkRingGroup struct {
   client        curator.CuratorFramework
 
   clients *hank_zk.ZkWatchedMap
+  rings   *hank_zk.ZkWatchedMap
 }
 
 func createZkRingGroup(ctx *hank_thrift.ThreadCtx, client curator.CuratorFramework, name string, rootPath string) (hank_iface.RingGroup, error) {
@@ -28,28 +30,37 @@ func createZkRingGroup(ctx *hank_thrift.ThreadCtx, client curator.CuratorFramewo
     return nil, err
   }
 
+  hank_zk.CreateWithParents(client, curator.PERSISTENT, rgRootPath, nil)
+
   clients, err := hank_zk.NewZkWatchedMap(client, path.Join(rgRootPath, CLIENT_ROOT), loadClientMetadata)
   if err != nil {
     return nil, err
   }
 
-  return &ZkRingGroup{ringGroupPath: rootPath, name: name, client: client, clients: clients}, nil
+  rings, err := hank_zk.NewZkWatchedMap(client, rgRootPath, loadZkRing)
+  if err != nil{
+    return nil, err
+  }
+
+  return &ZkRingGroup{ringGroupPath: rootPath, name: name, client: client, clients: clients, rings: rings}, nil
 
 }
 
-func loadZkRingGroup(ctx *hank_thrift.ThreadCtx, root string, client curator.CuratorFramework) (interface{}, error) {
+func loadZkRingGroup(ctx *hank_thrift.ThreadCtx, rgRootPath string, client curator.CuratorFramework) (interface{}, error) {
 
-  err := hank_zk.AssertExists(client, root)
+  err := hank_zk.AssertExists(client, rgRootPath)
   if err != nil {
     return nil, err
   }
 
-  clients, err := hank_zk.NewZkWatchedMap(client, path.Join(root, CLIENT_ROOT), loadClientMetadata)
+  clients, err := hank_zk.NewZkWatchedMap(client, path.Join(rgRootPath, CLIENT_ROOT), loadClientMetadata)
   if err != nil {
     return nil, err
   }
 
-  return &ZkRingGroup{ringGroupPath: root, client: client, clients: clients}, nil
+  rings, err := hank_zk.NewZkWatchedMap(client, rgRootPath, loadZkRing)
+
+  return &ZkRingGroup{ringGroupPath: rgRootPath, client: client, clients: clients, rings: rings}, nil
 }
 
 //  loader
@@ -73,10 +84,38 @@ func (p *ZkRingGroup) GetName() string {
 func (p *ZkRingGroup) GetClients() []*hank.ClientMetadata {
 
   groups := []*hank.ClientMetadata{}
-  for _,item := range p.clients.Values() {
+  for _, item := range p.clients.Values() {
     i := item.(*hank.ClientMetadata)
     groups = append(groups, i)
   }
 
   return groups
+}
+
+func (p *ZkRingGroup) AddRing(ctx *hank_thrift.ThreadCtx, ringNum int) (hank_iface.Ring, error) {
+  ringChild := "ring-" + strconv.Itoa(ringNum)
+  ringRoot := path.Join(p.rings.Root, ringChild)
+
+  ring, err := createZkRing(ctx, ringRoot, ringNum, p.client)
+  if err != nil {
+    return nil, err
+  }
+
+  p.rings.Put(ringChild, ring)
+  return ring, nil
+}
+
+func (p *ZkRingGroup) GetRing(ringNum int) hank_iface.Ring {
+  return p.rings.Get("ring-"+string(ringNum))
+}
+
+func (p *ZkRingGroup) GetRings() []hank_iface.Ring {
+
+  rings := []hank_iface.Ring{}
+  for _, item := range p.rings.Values() {
+    i := item.(hank_iface.Ring)
+    rings = append(rings, i)
+  }
+
+  return rings
 }

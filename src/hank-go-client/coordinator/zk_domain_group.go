@@ -14,11 +14,7 @@ type ZkDomainGroup struct {
   metadata *hank_zk.ZkWatchedNode
 }
 
-func createZkDomainGroup(
-  ctx *hank_thrift.ThreadCtx,
-  client curator.CuratorFramework,
-  name string,
-  rootPath string) (*ZkDomainGroup, error) {
+func createZkDomainGroup(ctx *hank_thrift.ThreadCtx, client curator.CuratorFramework, name string, rootPath string) (*ZkDomainGroup, error) {
 
   metadataPath := path.Join(rootPath, name)
 

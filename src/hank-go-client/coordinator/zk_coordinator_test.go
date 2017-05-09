@@ -6,6 +6,7 @@ import (
   "hank-go-client/fixtures"
   "time"
   "hank-go-client/hank_thrift"
+  "fmt"
 )
 
 func TestZkCoordinator(t *testing.T) {
@@ -51,8 +52,30 @@ func TestZkCoordinator(t *testing.T) {
   group2 := zkCoordinator2.GetDomainGroup("group1")
   assert.Equal(t, "group1", group2.GetName())
 
+  //  verify that rg/rings show up in other coordinators
 
-  zkCoordinator.AddRingGroup(ctx, "rg1")
+  ringGroup, err := zkCoordinator.AddRingGroup(ctx, "rg1")
+
+  if err != nil {
+    fmt.Println(err)
+    assert.Fail(t, "err")
+  }
+
+  _, err = ringGroup.AddRing(ctx, 0)
+
+  if err != nil {
+    fmt.Println(err)
+    assert.Fail(t, "err")
+  }
+
+  fixtures.WaitUntilOrDie(t, func() bool {
+    rg1 := zkCoordinator2.GetRingGroup("rg1")
+    if rg1 == nil {
+      return false
+    }
+
+    return len(rg1.GetRings()) == 1
+  })
 
   //  let messages flush to make shutdown cleaner.  dunno a better way.
   time.Sleep(time.Second)

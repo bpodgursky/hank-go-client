@@ -9,7 +9,7 @@ import (
   "sync"
 )
 
-type Loader func(ctx *hank_thrift.ThreadCtx, path string, client curator.CuratorFramework)(interface{}, error)
+type Loader func(ctx *hank_thrift.ThreadCtx, path string, client curator.CuratorFramework) (interface{}, error)
 
 type ZkWatchedMap struct {
   Root string
@@ -25,15 +25,8 @@ type ChildLoader struct {
   loader       Loader
   root         string
 
-  ctx          *hank_thrift.ThreadCtx
-  ctxLock      *sync.Mutex
-}
-
-func NewChildLoader(internalData map[string]interface{}, loader Loader, root string) *ChildLoader {
-
-  ctx := hank_thrift.NewThreadCtx()
-
-  return &ChildLoader{internalData: internalData, loader: loader, root: root, ctx: ctx, ctxLock: &sync.Mutex{}}
+  ctx     *hank_thrift.ThreadCtx
+  ctxLock *sync.Mutex
 }
 
 func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.TreeCacheEvent) error {
@@ -46,7 +39,7 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 
     fullChildPath := event.Data.Path()
     if hank_util.IsSubdirectory(p.root, fullChildPath) {
-      p.internalData[path.Base(fullChildPath)], _ = p.loader(p.ctx, fullChildPath, client)
+      conditionalInsert(p.ctx, client, p.loader, p.internalData, fullChildPath)
     }
 
   case cache.TreeCacheEventNodeRemoved:
@@ -57,6 +50,12 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
   }
 
   return nil
+}
+func conditionalInsert(ctx *hank_thrift.ThreadCtx, client curator.CuratorFramework, loader Loader, internalData map[string]interface{}, fullChildPath string) {
+  item, err := loader(ctx, fullChildPath, client)
+  if err == nil && item != nil {
+    internalData[path.Base(fullChildPath)] = item
+  }
 }
 
 func NewZkWatchedMap(
@@ -71,7 +70,15 @@ func NewZkWatchedMap(
   node := cache.NewTreeCache(client, root, cache.DefaultTreeCacheSelector).
     SetMaxDepth(1).
     SetCacheData(false)
-  node.Listenable().AddListener(NewChildLoader(internalData, loader, root))
+
+  node.Listenable().AddListener(&ChildLoader{
+    internalData: internalData,
+    loader:       loader,
+    root:         root,
+    ctx:          hank_thrift.NewThreadCtx(),
+    ctxLock:      &sync.Mutex{},
+  })
+
   startError := node.Start()
 
   if startError != nil {
@@ -85,15 +92,8 @@ func NewZkWatchedMap(
   }
 
   ctx := hank_thrift.NewThreadCtx()
-
   for _, element := range initialChildren {
-    value, loadError := loader(ctx, path.Join(root, element), client)
-
-    if loadError != nil {
-      return nil, loadError
-    }
-
-    internalData[path.Base(element)] = value
+    conditionalInsert(ctx, client, loader, internalData, path.Join(root, element))
   }
 
   return &ZkWatchedMap{node: node, client: client, Root: root, loader: loader, internalData: internalData}, nil
