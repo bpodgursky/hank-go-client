@@ -6,7 +6,6 @@ import (
   "hank-go-client/fixtures"
   "fmt"
   "hank-go-client/hank_thrift"
-  "github.com/stretchr/testify/assert"
 )
 
 func TestSmartClient(t *testing.T) {
@@ -25,11 +24,15 @@ func TestSmartClient(t *testing.T) {
   smartClient, _ := NewHankSmartClient(coordinator, "group1")
   smartClient2, _ := NewHankSmartClient(coordinator, "group1")
 
-  ret := fixtures.WaitUntilOrDie(t, func() bool {
+  fixtures.WaitUntilOrDie(t, func() bool {
     return len(rg.GetClients()) == 2
   })
 
-  assert.Nil(t, ret)
+  ring, _ := rg.AddRing(ctx, 0)
+  host, _ := ring.AddHost(ctx, "127.0.0.1", 54321, []string{})
+
+  fmt.Println(ring)
+  fmt.Println(host)
 
   fmt.Println(smartClient)
   fmt.Println(smartClient2)

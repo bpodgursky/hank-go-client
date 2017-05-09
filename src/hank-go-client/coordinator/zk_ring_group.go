@@ -8,6 +8,7 @@ import (
   "hank-go-client/hank_thrift"
   "hank-go-client/hank_iface"
   "strconv"
+  "hank-go-client/hank_util"
 )
 
 const CLIENT_ROOT string = "c"
@@ -92,8 +93,12 @@ func (p *ZkRingGroup) GetClients() []*hank.ClientMetadata {
   return groups
 }
 
+func ringName(ringNum int) string {
+  return "ring-" + strconv.Itoa(ringNum)
+}
+
 func (p *ZkRingGroup) AddRing(ctx *hank_thrift.ThreadCtx, ringNum int) (hank_iface.Ring, error) {
-  ringChild := "ring-" + strconv.Itoa(ringNum)
+  ringChild := ringName(ringNum)
   ringRoot := path.Join(p.rings.Root, ringChild)
 
   ring, err := createZkRing(ctx, ringRoot, ringNum, p.client)
@@ -106,7 +111,7 @@ func (p *ZkRingGroup) AddRing(ctx *hank_thrift.ThreadCtx, ringNum int) (hank_ifa
 }
 
 func (p *ZkRingGroup) GetRing(ringNum int) hank_iface.Ring {
-  return p.rings.Get("ring-"+string(ringNum))
+  return hank_util.GetRing(ringName(ringNum), p.rings.Get)
 }
 
 func (p *ZkRingGroup) GetRings() []hank_iface.Ring {

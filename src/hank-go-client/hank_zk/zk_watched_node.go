@@ -3,6 +3,8 @@ package hank_zk
 import (
   "github.com/curator-go/curator"
   "github.com/curator-go/curator/recipes/cache"
+  "git.apache.org/thrift.git/lib/go/thrift"
+  "hank-go-client/hank_thrift"
 )
 
 type ZkWatchedNode struct {
@@ -23,6 +25,21 @@ func LoadZkWatchedNode(client curator.CuratorFramework, path string) (*ZkWatched
   }
 
   return &ZkWatchedNode{node: node, client: client, path: path}, nil
+
+}
+
+func NewThriftZkWatchedNode(client curator.CuratorFramework,
+  mode curator.CreateMode,
+  path string,
+  ctx *hank_thrift.ThreadCtx,
+  initialValue thrift.TStruct) (*ZkWatchedNode, error) {
+
+  bytes, err := ctx.ToBytes(initialValue)
+  if err != nil {
+    return nil, err
+  }
+
+ return NewZkWatchedNode(client, mode, path, bytes)
 
 }
 

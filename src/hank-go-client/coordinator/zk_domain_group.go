@@ -26,17 +26,12 @@ func createZkDomainGroup(ctx *hank_thrift.ThreadCtx, client curator.CuratorFrame
   metadata := hank.NewDomainGroupMetadata()
   metadata.DomainVersions = make(map[int32]int32)
 
-  bytes, err := ctx.ToBytes(metadata)
-
-  if err != nil{
-    return nil, err
-  }
-
-  node, nodeErr := hank_zk.NewZkWatchedNode(
+  node, nodeErr := hank_zk.NewThriftZkWatchedNode(
     client,
     curator.PERSISTENT,
     metadataPath,
-    bytes,
+    ctx,
+    metadata,
   )
 
   if nodeErr != nil {

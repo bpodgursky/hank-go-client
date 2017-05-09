@@ -23,6 +23,15 @@ func GetDomainGroupMetadata(ctx *hank_thrift.ThreadCtx, get hank_thrift.GetBytes
   return metadata, nil
 }
 
+func GetHostMetadata(ctx *hank_thrift.ThreadCtx, get hank_thrift.GetBytes) (*hank.HostMetadata, error) {
+  metadata := hank.NewHostMetadata()
+  error := ctx.ReadThrift(get, metadata)
+  if error != nil {
+    return nil, error
+  }
+  return metadata, nil
+}
+
 //  watched thrift map cast copypasta
 
 func GetDomainGroup(name string, get Getter) hank_iface.DomainGroup {
@@ -48,6 +57,15 @@ func GetClientMetadata(name string, get Getter) *hank.ClientMetadata {
   original, ok := raw.(hank.ClientMetadata)
   if ok {
     return &original
+  }
+  return nil
+}
+
+func GetRing(name string, get Getter) hank_iface.Ring {
+  raw := get(name)
+  original, ok := raw.(hank_iface.Ring)
+  if ok {
+    return original
   }
   return nil
 }

@@ -7,6 +7,7 @@ import (
   "time"
   "hank-go-client/hank_thrift"
   "fmt"
+  "hank-go-client/hank_iface"
 )
 
 func TestZkCoordinator(t *testing.T) {
@@ -54,28 +55,37 @@ func TestZkCoordinator(t *testing.T) {
 
   //  verify that rg/rings show up in other coordinators
 
-  ringGroup, err := zkCoordinator.AddRingGroup(ctx, "rg1")
+  rg1Coord1, _ := zkCoordinator.AddRingGroup(ctx, "rg1")
 
-  if err != nil {
-    fmt.Println(err)
-    assert.Fail(t, "err")
-  }
+  var rg1Coord2 hank_iface.RingGroup
+  fixtures.WaitUntilOrDie(t, func() bool {
+    rg1Coord2 = zkCoordinator2.GetRingGroup("rg1")
+    return rg1Coord2 != nil
+  })
 
-  _, err = ringGroup.AddRing(ctx, 0)
+  ringCoord1, _ := rg1Coord1.AddRing(ctx, 0)
 
-  if err != nil {
-    fmt.Println(err)
-    assert.Fail(t, "err")
-  }
+  var ringCoord2 hank_iface.Ring
+  fixtures.WaitUntilOrDie(t, func() bool {
+    ringCoord2 = rg1Coord2.GetRing(0)
+    return ringCoord2 != nil
+  })
+
+  hostCoord1, _ := ringCoord1.AddHost(ctx, "127.0.0.1", 54321, []string{})
+
+  var hostCoord2 []hank_iface.Host
+  fixtures.WaitUntilOrDie(t, func() bool {
+    hostCoord2 = ringCoord2.GetHosts(ctx)
+    return len(hostCoord2) == 1
+  })
 
   fixtures.WaitUntilOrDie(t, func() bool {
-    rg1 := zkCoordinator2.GetRingGroup("rg1")
-    if rg1 == nil {
-      return false
-    }
-
-    return len(rg1.GetRings()) == 1
+    metadata, _ := hostCoord2[0].GetMetadata(ctx)
+    return metadata.HostName == "127.0.0.1"
   })
+
+
+  fmt.Println(hostCoord1)
 
   //  let messages flush to make shutdown cleaner.  dunno a better way.
   time.Sleep(time.Second)
