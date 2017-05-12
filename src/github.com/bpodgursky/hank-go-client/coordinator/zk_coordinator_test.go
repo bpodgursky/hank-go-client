@@ -3,18 +3,19 @@ package coordinator
 import (
 	"fmt"
 	"github.com/bpodgursky/hank-go-client/fixtures"
+	"github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/curator-go/curator"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
-	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/iface"
 )
 
 func TestZkCoordinator(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	zkCoordinator, err1 := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
-	zkCoordinator3, err2 := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
+	zkCoordinator, err1 := createCoordinator(client)
+	zkCoordinator3, err2 := createCoordinator(client)
 
 	ctx := serializers.NewThreadCtx()
 
@@ -38,6 +39,7 @@ func TestZkCoordinator(t *testing.T) {
 
 	//  make sure this one picked up the message
 	fixtures.WaitUntilOrDie(t, func() bool {
+		fmt.Println(zkCoordinator3)
 		domainGroup := zkCoordinator3.GetDomainGroup("group1")
 		return domainGroup != nil
 	})
@@ -49,7 +51,7 @@ func TestZkCoordinator(t *testing.T) {
 	}
 
 	//  get the same thing with a fresh coordinator
-	zkCoordinator2, _ := NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
+	zkCoordinator2, _ := createCoordinator(client)
 	group2 := zkCoordinator2.GetDomainGroup("group1")
 	assert.Equal(t, "group1", group2.GetName())
 
@@ -80,14 +82,23 @@ func TestZkCoordinator(t *testing.T) {
 	})
 
 	fixtures.WaitUntilOrDie(t, func() bool {
-		metadata, _ := hostCoord2[0].GetMetadata(ctx)
+		metadata := hostCoord2[0].GetMetadata(ctx)
 		return metadata.HostName == "127.0.0.1"
 	})
 
 	fmt.Println(hostCoord1)
 
+	zkCoordinator.AddDomain(ctx, "domain1", 1, "", "", "", []string{})
+
 	//  let messages flush to make shutdown cleaner.  dunno a better way.
 	time.Sleep(time.Second)
 
 	fixtures.TeardownZookeeper(cluster, client)
+}
+func createCoordinator(client curator.CuratorFramework) (*ZkCoordinator, error) {
+	return NewZkCoordinator(client,
+		"/hank/domains",
+		"/hank/ring_groups",
+		"/hank/domain_groups",
+	)
 }

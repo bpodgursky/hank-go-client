@@ -1,7 +1,9 @@
 package watched_structs
 
 import (
+	"fmt"
 	"github.com/bpodgursky/hank-go-client/fixtures"
+	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/curator-go/curator"
 	"github.com/samuel/go-zookeeper/zk"
 	"github.com/stretchr/testify/assert"
@@ -9,7 +11,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
-	"github.com/bpodgursky/hank-go-client/serializers"
+  "github.com/liveramp/hank/hank-core/src/main/go/hank"
+  "github.com/bpodgursky/hank-go-client/iface"
 )
 
 func TestLocalZkServer(t *testing.T) {
@@ -36,13 +39,28 @@ func TestCurator(t *testing.T) {
 func TestZkWatchedNode(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	wn, _ := NewZkWatchedNode(client, curator.PERSISTENT, "/some/location", []byte("0"))
+	wn, err := NewBytesWatchedNode(client, curator.PERSISTENT,
+		"/some/location",
+		[]byte("0"),
+	)
+
+	if err != nil {
+		fmt.Println(err)
+		t.Fail()
+	}
+
+	ctx := serializers.NewThreadCtx()
+
 	time.Sleep(time.Second)
 
-	wn.Set([]byte("data1"))
+	wn.Set(ctx, []byte("data1"))
 
 	fixtures.WaitUntilOrDie(t, func() bool {
-		val, _ := wn.Get()
+		val, err := wn.Get().([]byte)
+
+		fmt.Println(val)
+		fmt.Println(err)
+
 		return string(val) == "data1"
 	})
 
@@ -50,7 +68,7 @@ func TestZkWatchedNode(t *testing.T) {
 
 }
 
-func LoadString(ctx *serializers.ThreadCtx, path string, client curator.CuratorFramework) (interface{}, error) {
+func LoadString(ctx *serializers.ThreadCtx, client curator.CuratorFramework, path string) (interface{}, error) {
 	data, error := client.GetData().ForPath(path)
 	return string(data), error
 }
@@ -92,20 +110,58 @@ func TestZkWatchedMap(t *testing.T) {
 func TestZkWatchedNode2(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	node, _ := NewZkWatchedNode(client, curator.PERSISTENT, "/some/path", []byte("0"))
-	node2, _ := NewZkWatchedNode(client, curator.PERSISTENT, "/some/path", []byte("0"))
+	node, _ := NewBytesWatchedNode(client, curator.PERSISTENT, "/some/path", []byte("0"))
+	node2, _ := LoadBytesWatchedNode(client, "/some/path")
+
+	ctx := serializers.NewThreadCtx()
 
 	testData := "Test String"
-  setErr := node.Set([]byte(testData))
+	setErr := node.Set(ctx, []byte(testData))
 
-  if setErr != nil {
+	if setErr != nil {
 		assert.Fail(t, "Failed")
 	}
 
 	fixtures.WaitUntilOrDie(t, func() bool {
-		val, _ := node2.Get()
-		return reflect.DeepEqual(string(val), testData)
+		val := asBytes(node2.Get())
+		if val != nil {
+			return reflect.DeepEqual(string(val), testData)
+		}
+		return false
 	})
 
 	fixtures.TeardownZookeeper(cluster, client)
+}
+
+func TestUpdateWatchedNode(t *testing.T) {
+  cluster, client := fixtures.SetupZookeeper(t)
+
+  hostData := hank.NewHostAssignmentsMetadata()
+  hostData.Domains = make(map[int32]*hank.HostDomainMetadata)
+  hostData.Domains[0] = hank.NewHostDomainMetadata()
+
+  ctx := serializers.NewThreadCtx()
+
+  node, _ := NewThriftWatchedNode(client, curator.PERSISTENT, "/some/path", ctx, iface.NewHostAssignmentMetadata, hostData)
+  node2, _ := LoadThriftWatchedNode(client, "/some/path", iface.NewHostAssignmentMetadata)
+
+  node.Update(ctx, func(val interface{}) interface{} {
+    meta := val.(*hank.HostAssignmentsMetadata)
+    meta.Domains[1] = hank.NewHostDomainMetadata()
+    return meta
+  })
+
+  fixtures.WaitUntilOrDie(t, func() bool {
+    meta := iface.AsHostAssignmentsMetadata(node2.Get())
+    return meta != nil && len(meta.Domains) == 2
+  })
+
+  fixtures.TeardownZookeeper(cluster, client)
+}
+
+func asBytes(val interface{}) []byte {
+	if val != nil {
+		return val.([]byte)
+	}
+	return nil
 }

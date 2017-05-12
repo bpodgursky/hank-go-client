@@ -1,73 +1,88 @@
 package iface
 
 import (
-  "github.com/bpodgursky/hank-go-client/serializers"
-  "github.com/liveramp/hank/hank-core/src/main/go/hank"
+	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 type Coordinator interface {
+	GetRingGroup(ringGroupName string) RingGroup
 
-  GetRingGroup(ringGroupName string) RingGroup
+	AddDomainGroup(ctx *serializers.ThreadCtx, name string) (DomainGroup, error)
 
-  AddDomainGroup(ctx *serializers.ThreadCtx, name string) (DomainGroup, error)
+	GetDomainGroup(domainGroupName string) DomainGroup
 
-  GetDomainGroup(domainGroupName string) DomainGroup
+	GetRingGroups() []RingGroup
 
-  GetRingGroups() []RingGroup
+	GetDomainById(ctx *serializers.ThreadCtx, domainId int32) (Domain, error)
 
-  //  etc (stub for now)
+	AddDomain(ctx *serializers.ThreadCtx,
+		domainName string,
+		numParts int,
+		storageEngineFactoryName string,
+		storageEngineOptions string,
+		partitionerName string,
+		requiredHostFlags []string,
+	) (Domain, error)
 
+	//  etc (stub for now)
 }
 
 type DomainGroup interface {
+	GetName() string
 
-  GetName() string
-
-  //  etc (stub)
-
-}
-
-type Host interface {
-
-  GetMetadata(ctx *serializers.ThreadCtx) (*hank.HostMetadata, error)
-
-  GetAssignedDomains(ctx *serializers.ThreadCtx) ([]HostDomain, error)
-
-  //  stub
-
-}
-
-type HostDomain interface {}
-
-type PartitionServerAddress struct {
-  HostName   string
-  PortNumber int
+	//  etc (stub)
 }
 
 type Ring interface {
+	//  stub
 
-  //  stub
+	AddHost(ctx *serializers.ThreadCtx, hostName string, port int, hostFlags []string) (Host, error)
 
-  AddHost(ctx *serializers.ThreadCtx, hostName string, port int, hostFlags []string) (Host, error)
-
-  GetHosts(ctx *serializers.ThreadCtx) []Host
-
+	GetHosts(ctx *serializers.ThreadCtx) []Host
 }
 
 type RingGroup interface {
+	GetName() string
 
-  GetName() string
+	GetRings() []Ring
 
-  GetRings() []Ring
+	AddRing(ctx *serializers.ThreadCtx, ringNum int) (Ring, error)
 
-  AddRing(ctx *serializers.ThreadCtx, ringNum int) (Ring, error)
+	GetRing(ringNum int) Ring
 
-  GetRing(ringNum int) Ring
+	RegisterClient(ctx *serializers.ThreadCtx, metadata *hank.ClientMetadata) error
 
-  RegisterClient(ctx *serializers.ThreadCtx, metadata *hank.ClientMetadata) error
+	GetClients() []*hank.ClientMetadata
 
-  GetClients() []*hank.ClientMetadata
+	//	stub
+}
 
-  //	stub
+type Host interface {
+	GetMetadata(ctx *serializers.ThreadCtx) *hank.HostMetadata
 
+	GetAssignedDomains(ctx *serializers.ThreadCtx) ([]HostDomain, error)
+
+	//  stub
+}
+
+type Domain interface {
+	//  stub
+
+	GetName() string
+	GetId(ctx *serializers.ThreadCtx) int32
+}
+
+type HostDomainPartition interface {
+}
+
+type HostDomain interface {
+	GetDomain(ctx *serializers.ThreadCtx) Domain
+
+	GetPartitions() []HostDomainPartition
+}
+
+type PartitionServerAddress struct {
+	HostName   string
+	PortNumber int
 }

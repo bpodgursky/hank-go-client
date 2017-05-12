@@ -6,6 +6,7 @@ import (
 	"path"
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/watched_structs"
+  "github.com/bpodgursky/hank-go-client/iface"
 )
 
 type ZkDomainGroup struct {
@@ -25,11 +26,12 @@ func createZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFrame
 	metadata := hank.NewDomainGroupMetadata()
 	metadata.DomainVersions = make(map[int32]int32)
 
-	node, nodeErr := watched_structs.NewThriftZkWatchedNode(
+	node, nodeErr := watched_structs.NewThriftWatchedNode(
 		client,
 		curator.PERSISTENT,
 		metadataPath,
 		ctx,
+		iface.NewDomainGroupMetadata,
 		metadata,
 	)
 
@@ -40,7 +42,7 @@ func createZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFrame
 	return &ZkDomainGroup{name: name, metadata: node}, nil
 }
 
-func loadZkDomainGroup(ctx *serializers.ThreadCtx, fullPath string, client curator.CuratorFramework) (interface{}, error) {
+func loadZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework, fullPath string) (interface{}, error) {
 
 	name := path.Base(fullPath)
 
@@ -49,7 +51,7 @@ func loadZkDomainGroup(ctx *serializers.ThreadCtx, fullPath string, client curat
 		return nil, err
 	}
 
-	node, nodeErr := watched_structs.LoadZkWatchedNode(client, fullPath)
+	node, nodeErr := watched_structs.LoadThriftWatchedNode(client, fullPath, iface.NewDomainGroupMetadata)
 	if nodeErr != nil {
 		return nil, nodeErr
 	}
@@ -64,5 +66,5 @@ func (p *ZkDomainGroup) GetName() string {
 }
 
 func (p *ZkDomainGroup) GetDomainVersions(ctx *serializers.ThreadCtx) {
-	GetDomainGroupMetadata(ctx, p.metadata.Get)
+	iface.AsDomainGroupMetadata(p.metadata.Get())
 }

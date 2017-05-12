@@ -18,11 +18,12 @@ type ZkRing struct {
 	root   string
 	num    int
 	client curator.CuratorFramework
+	coordinator *ZkCoordinator
 
 	hosts *watched_structs.ZkWatchedMap
 }
 
-func loadZkRing(ctx *serializers.ThreadCtx, root string, client curator.CuratorFramework) (interface{}, error) {
+func loadZkRing(ctx *serializers.ThreadCtx, client curator.CuratorFramework, root string) (interface{}, error) {
 	matches := RING_REGEX.FindStringSubmatch(path.Base(root))
 
 	//  dumb design and rings are directly in the RG root, but can't change it here

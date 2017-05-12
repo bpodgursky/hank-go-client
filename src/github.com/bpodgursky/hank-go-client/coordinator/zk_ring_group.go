@@ -46,7 +46,7 @@ func createZkRingGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramewo
 
 }
 
-func loadZkRingGroup(ctx *serializers.ThreadCtx, rgRootPath string, client curator.CuratorFramework) (interface{}, error) {
+func loadZkRingGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework, rgRootPath string) (interface{}, error) {
 
 	err := watched_structs.AssertExists(client, rgRootPath)
 	if err != nil {
@@ -65,7 +65,7 @@ func loadZkRingGroup(ctx *serializers.ThreadCtx, rgRootPath string, client curat
 
 //  loader
 
-func loadClientMetadata(ctx *serializers.ThreadCtx, path string, client curator.CuratorFramework) (interface{}, error) {
+func loadClientMetadata(ctx *serializers.ThreadCtx, client curator.CuratorFramework, path string) (interface{}, error) {
 	metadata := hank.NewClientMetadata()
 	watched_structs.LoadThrift(ctx, path, client, metadata)
 	return metadata, nil
@@ -110,7 +110,7 @@ func (p *ZkRingGroup) AddRing(ctx *serializers.ThreadCtx, ringNum int) (iface.Ri
 }
 
 func (p *ZkRingGroup) GetRing(ringNum int) iface.Ring {
-	return GetRing(ringName(ringNum), p.rings.Get)
+	return iface.AsRing(p.rings.Get(ringName(ringNum)))
 }
 
 func (p *ZkRingGroup) GetRings() []iface.Ring {
