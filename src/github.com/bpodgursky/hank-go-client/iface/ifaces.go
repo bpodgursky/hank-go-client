@@ -18,7 +18,7 @@ type Coordinator interface {
 
 	AddDomain(ctx *serializers.ThreadCtx,
 		domainName string,
-		numParts int,
+		numParts int32,
 		storageEngineFactoryName string,
 		storageEngineOptions string,
 		partitionerName string,
