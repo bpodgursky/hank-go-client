@@ -1,4 +1,4 @@
-package partition_server
+package thrift_services
 
 import (
 	"fmt"

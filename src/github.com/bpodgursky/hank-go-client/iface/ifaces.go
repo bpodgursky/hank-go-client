@@ -14,7 +14,7 @@ type Coordinator interface {
 
 	GetRingGroups() []RingGroup
 
-	GetDomainById(ctx *serializers.ThreadCtx, domainId int32) (Domain, error)
+	GetDomainById(ctx *serializers.ThreadCtx, domainId DomainID) (Domain, error)
 
 	AddDomain(ctx *serializers.ThreadCtx,
 		domainName string,
@@ -30,6 +30,8 @@ type Coordinator interface {
 
 type DomainGroup interface {
 	GetName() string
+
+  SetDomainVersions(ctx *serializers.ThreadCtx, flags map[DomainID]VersionID) error
 
 	//  etc (stub)
 }
@@ -47,9 +49,9 @@ type RingGroup interface {
 
 	GetRings() []Ring
 
-	AddRing(ctx *serializers.ThreadCtx, ringNum int) (Ring, error)
+	AddRing(ctx *serializers.ThreadCtx, ringNum RingID) (Ring, error)
 
-	GetRing(ringNum int) Ring
+	GetRing(ringNum RingID) Ring
 
 	RegisterClient(ctx *serializers.ThreadCtx, metadata *hank.ClientMetadata) error
 
@@ -61,28 +63,48 @@ type RingGroup interface {
 type Host interface {
 	GetMetadata(ctx *serializers.ThreadCtx) *hank.HostMetadata
 
-	GetAssignedDomains(ctx *serializers.ThreadCtx) ([]HostDomain, error)
+  GetAssignedDomains(ctx *serializers.ThreadCtx) []HostDomain
 
-	//  stub
+  GetEnvironmentFlags(ctx *serializers.ThreadCtx) map[string]string
+
+  SetEnvironmentFlags(ctx *serializers.ThreadCtx, flags map[string]string) error
+
+  AddDomain(ctx *serializers.ThreadCtx, domain Domain) HostDomain
+
+  GetAddress(ctx *serializers.ThreadCtx) *PartitionServerAddress
+
+//  stub
 }
 
 type Domain interface {
 	//  stub
 
 	GetName() string
-	GetId(ctx *serializers.ThreadCtx) int32
+	GetId(ctx *serializers.ThreadCtx) DomainID
 }
 
 type HostDomainPartition interface {
+
+  GetPartitionNumber() PartitionID
+
+  GetCurrentDomainVersion() VersionID
+
 }
 
 type HostDomain interface {
-	GetDomain(ctx *serializers.ThreadCtx) Domain
+	GetDomain(ctx *serializers.ThreadCtx, coordinator Coordinator) (Domain, error)
 
-	GetPartitions() []HostDomainPartition
+  AddPartition(ctx *serializers.ThreadCtx, partNum PartitionID) HostDomainPartition
+
+	//GetPartitions() []HostDomainPartition
 }
 
 type PartitionServerAddress struct {
 	HostName   string
-	PortNumber int
+	PortNumber int32
+}
+
+type HostAddress struct {
+  Ring Ring
+  Address *PartitionServerAddress
 }

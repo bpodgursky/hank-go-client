@@ -7,6 +7,7 @@ import (
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/curator-go/curator"
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -27,7 +28,7 @@ func TestZkCoordinator(t *testing.T) {
 		assert.Fail(t, "Error initializing coordinator 2")
 	}
 
-	_, createError := zkCoordinator.AddDomainGroup(ctx, "group1")
+	dg1, createError := zkCoordinator.AddDomainGroup(ctx, "group1")
 
 	if createError != nil {
 		assert.Fail(t, "Error adding domain group")
@@ -73,22 +74,50 @@ func TestZkCoordinator(t *testing.T) {
 		return ringCoord2 != nil
 	})
 
-	hostCoord1, _ := ringCoord1.AddHost(ctx, "127.0.0.1", 54321, []string{})
+	host1Coord1, _ := ringCoord1.AddHost(ctx, "127.0.0.1", 54321, []string{})
 
-	var hostCoord2 []iface.Host
+	var hostsCoord2 []iface.Host
 	fixtures.WaitUntilOrDie(t, func() bool {
-		hostCoord2 = ringCoord2.GetHosts(ctx)
-		return len(hostCoord2) == 1
+		hostsCoord2 = ringCoord2.GetHosts(ctx)
+		return len(hostsCoord2) == 1
 	})
 
+	var host1Coord2 = hostsCoord2[0]
+
 	fixtures.WaitUntilOrDie(t, func() bool {
-		metadata := hostCoord2[0].GetMetadata(ctx)
-		return metadata.HostName == "127.0.0.1"
+		return host1Coord2.GetMetadata(ctx).HostName == "127.0.0.1"
 	})
 
-	fmt.Println(hostCoord1)
+	flags := make(map[string]string)
+	flags["flag1"] = "value1"
+	host1Coord1.SetEnvironmentFlags(ctx, flags)
 
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return reflect.DeepEqual(host1Coord2.GetEnvironmentFlags(ctx), flags)
+	})
+
+	fmt.Println(host1Coord1)
+
+	domain1, _ := zkCoordinator.AddDomain(ctx, "domain0", 1, "", "", "", []string{})
 	zkCoordinator.AddDomain(ctx, "domain1", 1, "", "", "", []string{})
+
+	fixtures.WaitUntilOrDie(t, func() bool {
+		domain, _ := zkCoordinator2.GetDomainById(ctx, 0)
+		return domain != nil && domain.GetName() == "domain0"
+	})
+
+	fixtures.WaitUntilOrDie(t, func() bool {
+		domain, _ := zkCoordinator2.GetDomainById(ctx, 1)
+		return domain != nil && domain.GetName() == "domain1"
+	})
+
+	dg1.SetDomainVersions(ctx, map[iface.DomainID]iface.VersionID{})
+
+	//host1Coord1.AddDomain(ctx, )
+
+	fmt.Println(domain1)
+
+	//  TODO test partition assignment
 
 	//  let messages flush to make shutdown cleaner.  dunno a better way.
 	time.Sleep(time.Second)

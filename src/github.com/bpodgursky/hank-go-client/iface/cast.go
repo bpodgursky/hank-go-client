@@ -70,6 +70,14 @@ func AsHostAssignmentsMetadata(val interface{}) *hank.HostAssignmentsMetadata {
   return val.(*hank.HostAssignmentsMetadata)
 }
 
+func AsHostDomainPartition(val interface{}) HostDomainPartition {
+  if val == nil {
+    return nil
+  }
+  return val.(HostDomainPartition)
+}
+
+
 
 //  fuck this fucking braindead language.  this is fucking idiotic.
 

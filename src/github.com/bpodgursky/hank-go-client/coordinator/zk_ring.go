@@ -1,13 +1,13 @@
 package coordinator
 
 import (
+	"github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/bpodgursky/hank-go-client/watched_structs"
 	"github.com/curator-go/curator"
 	"path"
 	"regexp"
 	"strconv"
-	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/watched_structs"
-	"github.com/bpodgursky/hank-go-client/iface"
 )
 
 var RING_REGEX = regexp.MustCompile("ring-([0-9]+)")
@@ -15,9 +15,9 @@ var RING_REGEX = regexp.MustCompile("ring-([0-9]+)")
 const HOSTS_PATH_SEGMENT string = "hosts"
 
 type ZkRing struct {
-	root   string
-	num    int
-	client curator.CuratorFramework
+	root        string
+	num         iface.RingID
+	client      curator.CuratorFramework
 	coordinator *ZkCoordinator
 
 	hosts *watched_structs.ZkWatchedMap
@@ -39,13 +39,15 @@ func loadZkRing(ctx *serializers.ThreadCtx, client curator.CuratorFramework, roo
 			return nil, err
 		}
 
-		return &ZkRing{root: root, num: num, client: client, hosts: hosts}, nil
+		//  TODO add HostsWatchedMapListener.  it's what tells the client to reload the host cache thing.
+
+		return &ZkRing{root: root, num: iface.RingID(num), client: client, hosts: hosts}, nil
 	}
 
 	return nil, nil
 }
 
-func createZkRing(ctx *serializers.ThreadCtx, root string, num int, client curator.CuratorFramework) (*ZkRing, error) {
+func createZkRing(ctx *serializers.ThreadCtx, root string, num iface.RingID, client curator.CuratorFramework) (*ZkRing, error) {
 	watched_structs.CreateWithParents(client, curator.PERSISTENT, root, nil)
 
 	hosts, err := watched_structs.NewZkWatchedMap(client, path.Join(root, HOSTS_PATH_SEGMENT), loadZkHost)

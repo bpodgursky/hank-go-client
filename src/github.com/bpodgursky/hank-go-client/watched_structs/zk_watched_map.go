@@ -23,7 +23,7 @@ type ChildLoader struct {
   loader       Loader
   root         string
 
-  ctx     *serializers.ThreadCtx
+  ctx *serializers.ThreadCtx
 }
 
 func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.TreeCacheEvent) error {
@@ -34,7 +34,10 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
   case cache.TreeCacheEventNodeAdded:
     fullChildPath := event.Data.Path()
     if IsSubdirectory(p.root, fullChildPath) {
-      conditionalInsert(p.ctx, client, p.loader, p.internalData, fullChildPath)
+      err := conditionalInsert(p.ctx, client, p.loader, p.internalData, fullChildPath)
+      if err != nil {
+        return err
+      }
     }
   case cache.TreeCacheEventNodeRemoved:
     fullChildPath := event.Data.Path()
@@ -43,11 +46,18 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 
   return nil
 }
-func conditionalInsert(ctx *serializers.ThreadCtx, client curator.CuratorFramework, loader Loader, internalData map[string]interface{}, fullChildPath string) {
+func conditionalInsert(ctx *serializers.ThreadCtx, client curator.CuratorFramework, loader Loader, internalData map[string]interface{}, fullChildPath string) error {
   item, err := loader(ctx, client, fullChildPath)
-  if err == nil && item != nil {
+
+  if err != nil {
+    return err
+  }
+
+  if item != nil {
     internalData[path.Base(fullChildPath)] = item
   }
+
+  return nil
 }
 
 func NewZkWatchedMap(
@@ -84,7 +94,10 @@ func NewZkWatchedMap(
 
   ctx := serializers.NewThreadCtx()
   for _, element := range initialChildren {
-    conditionalInsert(ctx, client, loader, internalData, path.Join(root, element))
+    err := conditionalInsert(ctx, client, loader, internalData, path.Join(root, element))
+    if err != nil {
+      return nil, err
+    }
   }
 
   return &ZkWatchedMap{node: node, client: client, Root: root, loader: loader, internalData: internalData}, nil

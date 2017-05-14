@@ -92,11 +92,11 @@ func (p *ZkRingGroup) GetClients() []*hank.ClientMetadata {
 	return groups
 }
 
-func ringName(ringNum int) string {
-	return "ring-" + strconv.Itoa(ringNum)
+func ringName(ringNum iface.RingID) string {
+	return "ring-" + strconv.Itoa(int(ringNum))
 }
 
-func (p *ZkRingGroup) AddRing(ctx *serializers.ThreadCtx, ringNum int) (iface.Ring, error) {
+func (p *ZkRingGroup) AddRing(ctx *serializers.ThreadCtx, ringNum iface.RingID) (iface.Ring, error) {
 	ringChild := ringName(ringNum)
 	ringRoot := path.Join(p.rings.Root, ringChild)
 
@@ -109,7 +109,7 @@ func (p *ZkRingGroup) AddRing(ctx *serializers.ThreadCtx, ringNum int) (iface.Ri
 	return ring, nil
 }
 
-func (p *ZkRingGroup) GetRing(ringNum int) iface.Ring {
+func (p *ZkRingGroup) GetRing(ringNum iface.RingID) iface.Ring {
 	return iface.AsRing(p.rings.Get(ringName(ringNum)))
 }
 

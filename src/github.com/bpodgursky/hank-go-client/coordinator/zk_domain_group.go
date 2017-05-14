@@ -68,3 +68,17 @@ func (p *ZkDomainGroup) GetName() string {
 func (p *ZkDomainGroup) GetDomainVersions(ctx *serializers.ThreadCtx) {
 	iface.AsDomainGroupMetadata(p.metadata.Get())
 }
+
+func (p *ZkDomainGroup) SetDomainVersions(ctx *serializers.ThreadCtx, versions map[iface.DomainID]iface.VersionID) error {
+
+  _, err := p.metadata.Update(ctx, func(val interface{}) interface{} {
+    metadata := iface.AsDomainGroupMetadata(val)
+
+    for key, val := range versions {
+      metadata.DomainVersions[int32(key)] = int32(val)
+    }
+    return metadata
+  })
+
+  return err
+}

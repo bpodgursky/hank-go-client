@@ -45,7 +45,7 @@ func (p *ObjLoader) ChildEvent(client curator.CuratorFramework, event cache.Tree
 
 		obj, err := p.watchedNode.deserializer(p.watchedNode.ctx, data.Data(), p.watchedNode.constructor)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Error loading child in ZkWatchedNode: ", err)
 			return err
 		}
 
@@ -136,14 +136,16 @@ func (p *ZkWatchedNode) Set(ctx *serializers.ThreadCtx,
 // Note: update() should not modify its argument
 type Updater func(interface{}) interface{}
 
-func (p *ZkWatchedNode) Update(ctx *serializers.ThreadCtx, updater Updater) {
+func (p *ZkWatchedNode) Update(ctx *serializers.ThreadCtx, updater Updater) (interface{}, error) {
 
 	backoffStrat := backoff.NewExponentialBackOff()
 	backoffStrat.MaxElapsedTime = time.Second * 10
 
-	backoff.Retry(func() error {
+	var newValue interface{}
 
-		newValue := updater(p.value)
+	error := backoff.Retry(func() error {
+
+		newValue = updater(p.value)
 
 		bytes, err := p.serializer(ctx, newValue)
 		if err != nil {
@@ -159,4 +161,9 @@ func (p *ZkWatchedNode) Update(ctx *serializers.ThreadCtx, updater Updater) {
 
 	}, backoffStrat)
 
+	if error != nil {
+		return nil, error
+	}
+
+	return newValue, nil
 }
