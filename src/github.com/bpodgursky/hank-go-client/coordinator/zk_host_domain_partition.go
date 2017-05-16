@@ -1,6 +1,9 @@
 package coordinator
 
-import "github.com/bpodgursky/hank-go-client/iface"
+import (
+  "github.com/bpodgursky/hank-go-client/iface"
+  "github.com/bpodgursky/hank-go-client/serializers"
+)
 
 type ZkHostDomainPartition struct {
   host            *ZkHost
@@ -18,4 +21,8 @@ func (p *ZkHostDomainPartition) GetPartitionNumber() iface.PartitionID {
 
 func (p *ZkHostDomainPartition) GetCurrentDomainVersion() iface.VersionID {
   return p.host.getCurrentDomainGroupVersion(p.domainId, p.partitionNumber)
+}
+
+func (p *ZkHostDomainPartition) SetCurrentDomainVersion(ctx *serializers.ThreadCtx, version iface.VersionID) error {
+  return p.host.setCurrentDomainGroupVersion(ctx, p.domainId, p.partitionNumber, version)
 }

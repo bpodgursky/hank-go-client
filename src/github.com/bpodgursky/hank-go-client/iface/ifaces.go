@@ -31,11 +31,14 @@ type Coordinator interface {
 type DomainGroup interface {
 	GetName() string
 
-  SetDomainVersions(ctx *serializers.ThreadCtx, flags map[DomainID]VersionID) error
+	SetDomainVersions(ctx *serializers.ThreadCtx, flags map[DomainID]VersionID) error
+
+	GetDomainVersions(ctx *serializers.ThreadCtx) []*DomainAndVersion
+
+	GetDomainVersion(domainID DomainID) *DomainAndVersion
 
 	//  etc (stub)
 }
-
 type Ring interface {
 	//  stub
 
@@ -63,17 +66,19 @@ type RingGroup interface {
 type Host interface {
 	GetMetadata(ctx *serializers.ThreadCtx) *hank.HostMetadata
 
-  GetAssignedDomains(ctx *serializers.ThreadCtx) []HostDomain
+	GetAssignedDomains(ctx *serializers.ThreadCtx) []HostDomain
 
-  GetEnvironmentFlags(ctx *serializers.ThreadCtx) map[string]string
+	GetEnvironmentFlags(ctx *serializers.ThreadCtx) map[string]string
 
-  SetEnvironmentFlags(ctx *serializers.ThreadCtx, flags map[string]string) error
+	SetEnvironmentFlags(ctx *serializers.ThreadCtx, flags map[string]string) error
 
-  AddDomain(ctx *serializers.ThreadCtx, domain Domain) HostDomain
+	AddDomain(ctx *serializers.ThreadCtx, domain Domain) (HostDomain, error)
 
-  GetAddress(ctx *serializers.ThreadCtx) *PartitionServerAddress
+	GetAddress(ctx *serializers.ThreadCtx) *PartitionServerAddress
 
-//  stub
+	GetHostDomain(ctx *serializers.ThreadCtx, domainId DomainID) HostDomain
+
+	//  stub
 }
 
 type Domain interface {
@@ -84,19 +89,19 @@ type Domain interface {
 }
 
 type HostDomainPartition interface {
+	GetPartitionNumber() PartitionID
 
-  GetPartitionNumber() PartitionID
+	GetCurrentDomainVersion() VersionID
 
-  GetCurrentDomainVersion() VersionID
-
+	SetCurrentDomainVersion(ctx *serializers.ThreadCtx, version VersionID) error
 }
 
 type HostDomain interface {
 	GetDomain(ctx *serializers.ThreadCtx, coordinator Coordinator) (Domain, error)
 
-  AddPartition(ctx *serializers.ThreadCtx, partNum PartitionID) HostDomainPartition
+	AddPartition(ctx *serializers.ThreadCtx, partNum PartitionID) HostDomainPartition
 
-	//GetPartitions() []HostDomainPartition
+	GetPartitions() []HostDomainPartition
 }
 
 type PartitionServerAddress struct {
@@ -105,6 +110,11 @@ type PartitionServerAddress struct {
 }
 
 type HostAddress struct {
-  Ring Ring
-  Address *PartitionServerAddress
+	Ring    Ring
+	Address *PartitionServerAddress
+}
+
+type DomainAndVersion struct {
+	DomainID  DomainID
+	VersionID VersionID
 }

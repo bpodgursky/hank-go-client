@@ -6,7 +6,7 @@ import (
 	"path"
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/watched_structs"
-  "github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/iface"
 )
 
 type ZkDomainGroup struct {
@@ -65,20 +65,36 @@ func (p *ZkDomainGroup) GetName() string {
 	return p.name
 }
 
-func (p *ZkDomainGroup) GetDomainVersions(ctx *serializers.ThreadCtx) {
-	iface.AsDomainGroupMetadata(p.metadata.Get())
+func (p *ZkDomainGroup) GetDomainVersions(ctx *serializers.ThreadCtx) []*iface.DomainAndVersion {
+	metadata := iface.AsDomainGroupMetadata(p.metadata.Get())
+
+	versions := []*iface.DomainAndVersion{}
+	for domainID, version := range metadata.DomainVersions {
+		versions = append(versions, &iface.DomainAndVersion{DomainID: iface.DomainID(domainID), VersionID: iface.VersionID(version)})
+	}
+	return versions
 }
 
 func (p *ZkDomainGroup) SetDomainVersions(ctx *serializers.ThreadCtx, versions map[iface.DomainID]iface.VersionID) error {
 
-  _, err := p.metadata.Update(ctx, func(val interface{}) interface{} {
-    metadata := iface.AsDomainGroupMetadata(val)
+	_, err := p.metadata.Update(ctx, func(val interface{}) interface{} {
+		metadata := iface.AsDomainGroupMetadata(val)
 
-    for key, val := range versions {
-      metadata.DomainVersions[int32(key)] = int32(val)
-    }
-    return metadata
-  })
+		for key, val := range versions {
+			metadata.DomainVersions[int32(key)] = int32(val)
+		}
+		return metadata
+	})
 
-  return err
+	return err
+}
+
+func (p *ZkDomainGroup) GetDomainVersion(domain iface.DomainID) *iface.DomainAndVersion {
+
+	version, ok := iface.AsDomainGroupMetadata(p.metadata.Get()).DomainVersions[int32(domain)]
+	if !ok {
+		return nil
+	}
+
+	return &iface.DomainAndVersion{DomainID: domain, VersionID: iface.VersionID(version)}
 }

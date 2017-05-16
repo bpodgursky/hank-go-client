@@ -107,14 +107,43 @@ func (p *ZkHost) getCurrentDomainGroupVersion(domainId iface.DomainID, partition
   return iface.VersionID(*partitionMetadata.CurrentVersionNumber)
 }
 
-//  public methods
+func (p *ZkHost) setCurrentDomainGroupVersion(ctx *serializers.ThreadCtx, domainId iface.DomainID, partitionNumber iface.PartitionID, version iface.VersionID) error {
+
+  _, err := p.assignedPartitions.Update(ctx, func(orig interface{}) interface{} {
+    metadata := iface.AsHostAssignmentsMetadata(orig)
+    ensureDomain(metadata, domainId)
+
+    partitionMetadata := hank.NewHostDomainPartitionMetadata()
+    thisVariableExistsBecauseGoIsAStupidLanguage := int32(version)
+    partitionMetadata.CurrentVersionNumber = &thisVariableExistsBecauseGoIsAStupidLanguage
+    partitionMetadata.Deletable = false
+
+    metadata.Domains[int32(domainId)].Partitions[int32(partitionNumber)] = partitionMetadata
+
+    return metadata
+  })
+
+  return err
+}
+
+func (p *ZkHost) getPartitions(domainId iface.DomainID) []iface.HostDomainPartition {
+  domainMetadata := iface.AsHostAssignmentsMetadata(p.assignedPartitions.Get()).Domains[int32(domainId)]
+
+  var values []iface.HostDomainPartition
+  for key := range domainMetadata.Partitions {
+    values = append(values, newZkHostDomainPartition(p, domainId, iface.PartitionID(key)))
+  }
+
+  return values
+}
+
+//  public
 
 func (p *ZkHost) GetMetadata(ctx *serializers.ThreadCtx) *hank.HostMetadata {
   return iface.AsHostMetadata(p.metadata.Get())
 }
 
 func (p *ZkHost) GetAssignedDomains(ctx *serializers.ThreadCtx) []iface.HostDomain {
-
   assignedDomains := iface.AsHostAssignmentsMetadata(p.assignedPartitions.Get())
 
   hostDomains := []iface.HostDomain{}
@@ -140,21 +169,44 @@ func (p *ZkHost) SetEnvironmentFlags(ctx *serializers.ThreadCtx, flags map[strin
   return err
 }
 
-func (p *ZkHost) AddDomain(ctx *serializers.ThreadCtx, domain iface.Domain) iface.HostDomain {
+func (p *ZkHost) AddDomain(ctx *serializers.ThreadCtx, domain iface.Domain) (iface.HostDomain, error) {
   domainId := domain.GetId(ctx)
 
-  p.assignedPartitions.Update(ctx, func(orig interface{}) interface{} {
+  _, err := p.assignedPartitions.Update(ctx, func(orig interface{}) interface{} {
     metadata := iface.AsHostAssignmentsMetadata(orig)
-    if _, ok := metadata.Domains[int32(domainId)]; !ok {
-      metadata.Domains[int32(domainId)] = hank.NewHostDomainMetadata()
-    }
+    ensureDomain(metadata, domainId)
     return metadata
   })
 
-  return newZkHostDomain(p, domainId)
+  if err != nil {
+    return nil, err
+  }
+
+  return newZkHostDomain(p, domainId), nil
+}
+func ensureDomain(metadata *hank.HostAssignmentsMetadata, domainId iface.DomainID) {
+  if _, ok := metadata.Domains[int32(domainId)]; !ok {
+    domainMetadata := hank.NewHostDomainMetadata()
+    domainMetadata.Partitions = make(map[int32]*hank.HostDomainPartitionMetadata)
+
+    metadata.Domains[int32(domainId)] = domainMetadata
+  }
 }
 
 func (p *ZkHost) GetAddress(ctx *serializers.ThreadCtx) *iface.PartitionServerAddress {
   metadata := iface.AsHostMetadata(p.metadata.Get())
   return &iface.PartitionServerAddress{HostName: metadata.HostName, PortNumber: metadata.PortNumber}
+}
+
+func (p *ZkHost) GetHostDomain(ctx *serializers.ThreadCtx, domainId iface.DomainID) iface.HostDomain {
+
+  assignedDomains := iface.AsHostAssignmentsMetadata(p.assignedPartitions.Get())
+  metadata := assignedDomains.Domains[int32(domainId)]
+
+  if metadata == nil {
+    return nil
+  }
+
+  return newZkHostDomain(p, domainId)
+
 }

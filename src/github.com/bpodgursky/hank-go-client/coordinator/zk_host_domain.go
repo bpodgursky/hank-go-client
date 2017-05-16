@@ -22,7 +22,6 @@ func (p *ZkHostDomain) AddPartition(ctx *serializers.ThreadCtx, partNum iface.Pa
 	return p.host.addPartition(ctx, p.domainId, partNum)
 }
 
-
-//func (p *ZkHostDomain) GetPartitions() []hank.HostDomainPartition {
-//  p.host.getPar
-//}
+func (p *ZkHostDomain) GetPartitions() []iface.HostDomainPartition {
+	return p.host.getPartitions(p.domainId)
+}

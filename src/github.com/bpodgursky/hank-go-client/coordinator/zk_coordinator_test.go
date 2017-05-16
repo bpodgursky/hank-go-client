@@ -53,8 +53,8 @@ func TestZkCoordinator(t *testing.T) {
 
 	//  get the same thing with a fresh coordinator
 	zkCoordinator2, _ := createCoordinator(client)
-	group2 := zkCoordinator2.GetDomainGroup("group1")
-	assert.Equal(t, "group1", group2.GetName())
+	dg1coord2 := zkCoordinator2.GetDomainGroup("group1")
+	assert.Equal(t, "group1", dg1coord2.GetName())
 
 	//  verify that rg/rings show up in other coordinators
 
@@ -111,13 +111,36 @@ func TestZkCoordinator(t *testing.T) {
 		return domain != nil && domain.GetName() == "domain1"
 	})
 
-	dg1.SetDomainVersions(ctx, map[iface.DomainID]iface.VersionID{})
+	hostDomain, err := host1Coord1.AddDomain(ctx, domain1)
+	hostDomain.AddPartition(ctx, 0)
 
-	//host1Coord1.AddDomain(ctx, )
+	fixtures.WaitUntilOrDie(t, func() bool {
+		hostDomain := host1Coord2.GetHostDomain(ctx, iface.DomainID(0))
 
-	fmt.Println(domain1)
+		if hostDomain == nil {
+			return false
+		}
 
-	//  TODO test partition assignment
+		assignedPartitions := hostDomain.GetPartitions()
+		if len(assignedPartitions) != 1 {
+			return false
+		}
+
+		return assignedPartitions[0].GetPartitionNumber() == 0
+
+	})
+
+	dg1.SetDomainVersions(ctx, map[iface.DomainID]iface.VersionID{0: 0})
+
+	fixtures.WaitUntilOrDie(t, func() bool {
+		version := dg1coord2.GetDomainVersion(iface.DomainID(0))
+
+		if version == nil {
+			return false
+		}
+
+		return version.VersionID == 0
+	})
 
 	//  let messages flush to make shutdown cleaner.  dunno a better way.
 	time.Sleep(time.Second)
