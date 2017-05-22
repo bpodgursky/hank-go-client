@@ -1,16 +1,17 @@
 package main
 
 import (
+	"bufio"
+	"encoding/hex"
+	"fmt"
 	"github.com/bpodgursky/hank-go-client/coordinator"
-	"github.com/curator-go/curator"
-	"time"
-	"os"
+	"github.com/bpodgursky/hank-go-client/hank_client"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
-	"fmt"
-	"github.com/bpodgursky/hank-go-client/hank_client"
-	"encoding/hex"
-	"bufio"
+	"github.com/curator-go/curator"
+	"os"
+	"strings"
+	"time"
 )
 
 func main() {
@@ -54,7 +55,7 @@ func main() {
 		text, _ := reader.ReadString('\n')
 		fmt.Println(text)
 
-		bytes, err := hex.DecodeString(text)
+		bytes, err := hex.DecodeString(strings.TrimSpace(text))
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -70,13 +71,10 @@ func main() {
 			fmt.Println("Found value")
 			encodeToString := hex.EncodeToString(val.Value)
 			fmt.Println("Value: ", encodeToString)
-		}else {
+		} else {
 			fmt.Println("Did not find value")
 		}
 
 	}
-
-
-
 
 }
