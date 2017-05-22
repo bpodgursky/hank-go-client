@@ -142,7 +142,7 @@ func (p *HostConnection) OnDataChange(newVal interface{}) error {
 		newVal = string(iface.HOST_OFFLINE)
 	}
 
-	newState := iface.HostState(newVal.(int))
+	newState := iface.HostState(newVal.(string))
 
 	defer p.lock.Unlock()
 	p.lock.Lock()
