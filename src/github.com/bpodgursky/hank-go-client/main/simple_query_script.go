@@ -9,6 +9,7 @@ import (
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/curator-go/curator"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -45,13 +46,21 @@ func main() {
 	domain := coordinator.GetDomain(argsWithoutProg[1])
 	domainId := domain.GetId(ctx)
 
-	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("Using domain: ", domain.GetName())
 
-	for {
+	file, err := os.Open(argsWithoutProg[2])
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		fmt.Println("Enter hex arl: ")
-		text, _ := reader.ReadString('\n')
-		fmt.Println(text)
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+
+		bytes := scanner.Bytes()
+		text := string(bytes)
+
+		fmt.Println("Checking: ", text)
 
 		bytes, err := hex.DecodeString(strings.TrimSpace(text))
 		if err != nil {
@@ -72,6 +81,10 @@ func main() {
 		} else {
 			fmt.Println("Did not find value")
 		}
+
+	}
+
+	for {
 
 	}
 
