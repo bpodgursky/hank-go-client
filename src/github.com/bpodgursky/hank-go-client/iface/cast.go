@@ -12,6 +12,13 @@ type Getter func(name string) interface{}
 
 // watched node cast copypasta
 
+func AsDomain(val interface{}) Domain {
+	if val == nil {
+		return nil
+	}
+	return val.(Domain)
+}
+
 func AsDomainGroupMetadata(val interface{}) *hank.DomainGroupMetadata {
 	if val == nil {
 		return nil

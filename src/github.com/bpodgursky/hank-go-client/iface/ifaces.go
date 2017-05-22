@@ -26,6 +26,8 @@ type Coordinator interface {
 		requiredHostFlags []string,
 	) (Domain, error)
 
+	GetDomain(domain string) Domain
+
 	//  etc (stub for now)
 }
 

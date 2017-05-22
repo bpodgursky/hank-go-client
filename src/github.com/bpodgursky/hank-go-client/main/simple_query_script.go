@@ -42,10 +42,8 @@ func main() {
 		return
 	}
 
-	dg := coordinator.GetDomainGroup("spruce-aws")
-
-	versions := dg.GetDomainVersions(ctx)
-	domainVersion := versions[0]
+	domain := coordinator.GetDomain(argsWithoutProg[1])
+	domainId := domain.GetId(ctx)
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -61,7 +59,7 @@ func main() {
 			return
 		}
 
-		val, err := conn.Get(domainVersion.DomainID, bytes)
+		val, err := conn.Get(domainId, bytes)
 		if err != nil {
 			fmt.Println(err)
 			return

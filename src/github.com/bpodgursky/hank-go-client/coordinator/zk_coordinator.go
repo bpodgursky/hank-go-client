@@ -159,3 +159,7 @@ func (p *ZkCoordinator) GetDomainById(ctx *serializers.ThreadCtx, domainId iface
 
 	return nil, nil
 }
+
+func (p *ZkCoordinator) GetDomain(domain string) (iface.Domain) {
+	return iface.AsDomain(p.domains.Get(domain))
+}

@@ -45,7 +45,7 @@ func TestMapPartitionServer(t *testing.T) {
 	transport.Open()
 
 	framed := thrift.NewTFramedTransportMaxLength(transport, 16384000)
-	
+
 
 	client := hank.NewPartitionServerClientFactory(
 		framed,
