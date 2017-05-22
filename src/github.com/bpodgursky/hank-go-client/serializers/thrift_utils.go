@@ -5,6 +5,11 @@ import (
 	"sync"
 )
 
+//	TODO probably not the right package name
+type DataListener interface {
+	OnDataChange(newVal interface{}) error
+}
+
 type ThreadCtx struct {
 	serializer   *thrift.TSerializer
 	deserializer *thrift.TDeserializer

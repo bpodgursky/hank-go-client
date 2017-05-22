@@ -26,3 +26,7 @@ func (p *ZkHostDomainPartition) GetCurrentDomainVersion() iface.VersionID {
 func (p *ZkHostDomainPartition) SetCurrentDomainVersion(ctx *serializers.ThreadCtx, version iface.VersionID) error {
   return p.host.setCurrentDomainGroupVersion(ctx, p.domainId, p.partitionNumber, version)
 }
+
+func (p *ZkHostDomainPartition) IsDeletable() bool {
+	return p.host.isDeletable(p.domainId, p.partitionNumber)
+}

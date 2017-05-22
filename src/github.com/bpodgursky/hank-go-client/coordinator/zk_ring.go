@@ -61,7 +61,7 @@ func createZkRing(ctx *serializers.ThreadCtx, root string, num iface.RingID, cli
 //  public methods
 
 func (p *ZkRing) AddHost(ctx *serializers.ThreadCtx, hostName string, port int, hostFlags []string) (iface.Host, error) {
-	return createZkHost(ctx, p.client, path.Join(p.hosts.Root, HOSTS_PATH_SEGMENT), hostName, port, hostFlags)
+	return CreateZkHost(ctx, p.client, path.Join(p.hosts.Root, HOSTS_PATH_SEGMENT), hostName, port, hostFlags)
 }
 
 func (p *ZkRing) GetHosts(ctx *serializers.ThreadCtx) []iface.Host {

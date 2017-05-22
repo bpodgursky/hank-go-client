@@ -3,6 +3,7 @@ package iface
 import (
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/liveramp/hank/hank-core/src/main/go/hank"
+	"strconv"
 )
 
 type Coordinator interface {
@@ -63,6 +64,15 @@ type RingGroup interface {
 	//	stub
 }
 
+type HostState int
+
+const (
+	HOST_IDLE     HostState = iota
+	HOST_SERVING  HostState = iota
+	HOST_UPDATING HostState = iota
+	HOST_OFFLINE  HostState = iota
+)
+
 type Host interface {
 	GetMetadata(ctx *serializers.ThreadCtx) *hank.HostMetadata
 
@@ -77,6 +87,12 @@ type Host interface {
 	GetAddress(ctx *serializers.ThreadCtx) *PartitionServerAddress
 
 	GetHostDomain(ctx *serializers.ThreadCtx, domainId DomainID) HostDomain
+
+	AddStateChangeListener(listener serializers.DataListener)
+
+	SetState(ctx *serializers.ThreadCtx, state HostState) error
+
+	GetState() HostState
 
 	//  stub
 }
@@ -94,6 +110,8 @@ type HostDomainPartition interface {
 	GetCurrentDomainVersion() VersionID
 
 	SetCurrentDomainVersion(ctx *serializers.ThreadCtx, version VersionID) error
+
+	IsDeletable() bool
 }
 
 type HostDomain interface {
@@ -109,10 +127,14 @@ type PartitionServerAddress struct {
 	PortNumber int32
 }
 
-type HostAddress struct {
-	Ring    Ring
-	Address *PartitionServerAddress
+func (p *PartitionServerAddress) Print() string {
+	return p.HostName + ":" + strconv.Itoa(int(p.PortNumber))
 }
+
+//type HostAddress struct {
+//	Ring    Ring
+//	Address *PartitionServerAddress
+//}
 
 type DomainAndVersion struct {
 	DomainID  DomainID

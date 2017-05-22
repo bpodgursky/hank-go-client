@@ -22,6 +22,7 @@ type ZkWatchedNode struct {
 	path        string
 	constructor Constructor
 	ctx         *serializers.ThreadCtx
+	listeners   []serializers.DataListener
 
 	serializer   Serializer
 	deserializer Deserializer
@@ -35,6 +36,12 @@ type ObjLoader struct {
 }
 
 func (p *ObjLoader) ChildEvent(client curator.CuratorFramework, event cache.TreeCacheEvent) error {
+
+	prevVersion := int32(-1)
+
+	if p.watchedNode.stat != nil {
+		prevVersion = p.watchedNode.stat.Version
+	}
 
 	switch event.Type {
 	case cache.TreeCacheEventNodeUpdated:
@@ -55,6 +62,15 @@ func (p *ObjLoader) ChildEvent(client curator.CuratorFramework, event cache.Tree
 	case cache.TreeCacheEventNodeRemoved:
 		p.watchedNode.value = nil
 		p.watchedNode.stat = &zk.Stat{}
+	}
+
+	if p.watchedNode.stat != nil && p.watchedNode.stat.Version != prevVersion {
+		for _, listener := range p.watchedNode.listeners {
+			err := listener.OnDataChange(p.watchedNode.value)
+			if err != nil {
+				fmt.Print("error calling listener: ", err)
+			}
+		}
 	}
 
 	return nil
@@ -85,7 +101,7 @@ func LoadZkWatchedNode(client curator.CuratorFramework, path string, constructor
 	//  TODO we might need a pool of these -- evaluate in production.  in a more civilized world, we'd just use a ThreadLocal
 	ctx := serializers.NewThreadCtx()
 
-	watchedNode := &ZkWatchedNode{client: client, path: path, constructor: constructor, ctx: ctx, serializer: serializer, deserializer: deserializer}
+	watchedNode := &ZkWatchedNode{client: client, path: path, constructor: constructor, ctx: ctx, listeners: []serializers.DataListener{}, serializer: serializer, deserializer: deserializer}
 
 	node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector).
 		SetMaxDepth(0).
@@ -131,6 +147,10 @@ func (p *ZkWatchedNode) Set(ctx *serializers.ThreadCtx,
 
 	_, err = p.client.SetData().ForPathWithData(p.path, bytes)
 	return err
+}
+
+func (p *ZkWatchedNode) AddListener(listener serializers.DataListener) {
+	p.listeners = append(p.listeners, listener)
 }
 
 // Note: update() should not modify its argument

@@ -20,13 +20,17 @@ func main() {
 		return
 	}
 
-	coordinator, coordErr := coordinator.NewZkCoordinator(client, "/hank/ring_groups", "/hank/domain_groups")
+	coordinator, coordErr := coordinator.NewZkCoordinator(client, "/hank/domains", "/hank/ring_groups", "/hank/domain_groups")
 	if coordErr != nil {
 		fmt.Println(startErr)
 		return
 	}
 
-	smartClient, clientErr := hank_client.NewHankSmartClient(coordinator, "spruce-aws")
+	options := hank_client.NewHankSmartClientOptions().
+		SetNumConnectionsPerHost(2).
+		Build()
+
+	smartClient, clientErr := hank_client.NewHankSmartClient(coordinator, "spruce-aws", options)
 	if clientErr != nil {
 		fmt.Println(clientErr)
 		return
