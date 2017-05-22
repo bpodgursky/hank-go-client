@@ -197,7 +197,7 @@ func (p *ZkHost) SetState(ctx *serializers.ThreadCtx, state iface.HostState) err
 }
 
 func (p *ZkHost) GetState() iface.HostState {
-	return iface.HostState(p.state.Get().(int))
+	return iface.HostState(p.state.Get().(string))
 }
 
 func (p *ZkHost) AddDomain(ctx *serializers.ThreadCtx, domain iface.Domain) (iface.HostDomain, error) {
