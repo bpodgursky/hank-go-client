@@ -23,6 +23,7 @@ func main() {
 
 	coordinator, coordErr := coordinator.NewZkCoordinator(client, "/hank/domains", "/hank/ring_groups", "/hank/domain_groups")
 	if coordErr != nil {
+
 		fmt.Println(coordErr)
 		return
 	}

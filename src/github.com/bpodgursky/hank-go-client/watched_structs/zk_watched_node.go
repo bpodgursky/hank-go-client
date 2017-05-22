@@ -52,7 +52,7 @@ func (p *ObjLoader) ChildEvent(client curator.CuratorFramework, event cache.Tree
 
 		obj, err := p.watchedNode.deserializer(p.watchedNode.ctx, data.Data(), p.watchedNode.constructor)
 		if err != nil {
-			fmt.Println("Error loading child in ZkWatchedNode: ", err)
+			fmt.Printf("Error loading child at %v in ZkWatchedNode %v\n", event.Data.Path(), err)
 			return err
 		}
 

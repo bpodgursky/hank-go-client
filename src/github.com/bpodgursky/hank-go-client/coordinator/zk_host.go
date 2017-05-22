@@ -46,10 +46,10 @@ func CreateZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, r
 		return nil, err
 	}
 
-	state, err := watched_structs.NewIntWatchedNode(client,
+	state, err := watched_structs.NewStringWatchedNode(client,
 		curator.EPHEMERAL,
 		path.Join(rootPath, STATE_PATH),
-		int(iface.HOST_OFFLINE))
+		string(iface.HOST_OFFLINE))
 
 	return &ZkHost{rootPath, node, partitionAssignments, state}, nil
 }
@@ -69,7 +69,7 @@ func loadZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, roo
 		return nil, err
 	}
 
-	state, err := watched_structs.LoadIntWatchedNode(client,
+	state, err := watched_structs.LoadStringWatchedNode(client,
 		path.Join(rootPath, STATE_PATH))
 
 	return &ZkHost{rootPath, node, assignments, state}, nil
@@ -193,7 +193,7 @@ func (p *ZkHost) SetEnvironmentFlags(ctx *serializers.ThreadCtx, flags map[strin
 }
 
 func (p *ZkHost) SetState(ctx *serializers.ThreadCtx, state iface.HostState) error {
-	return p.state.Set(ctx, int(state))
+	return p.state.Set(ctx, string(state))
 }
 
 func (p *ZkHost) GetState() iface.HostState {

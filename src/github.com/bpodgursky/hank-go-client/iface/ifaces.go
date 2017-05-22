@@ -64,13 +64,13 @@ type RingGroup interface {
 	//	stub
 }
 
-type HostState int
+type HostState string
 
 const (
-	HOST_IDLE     HostState = iota
-	HOST_SERVING  HostState = iota
-	HOST_UPDATING HostState = iota
-	HOST_OFFLINE  HostState = iota
+	HOST_IDLE     HostState = "IDLE"
+	HOST_SERVING  HostState = "SERVING"
+	HOST_UPDATING HostState = "UPDATING"
+	HOST_OFFLINE  HostState = "OFFLINE"
 )
 
 type Host interface {
