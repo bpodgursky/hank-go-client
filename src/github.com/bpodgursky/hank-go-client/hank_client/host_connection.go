@@ -117,15 +117,18 @@ func (p *HostConnection) Get(id iface.DomainID, key []byte) (*hank.HankResponse,
 func (p *HostConnection) connect() error {
 
 	p.socket, _ = thrift.NewTSocketTimeout(p.host.GetAddress(p.ctx).Print(), time.Duration(p.establishConnectionTimeoutMs*1e6))
-	err := p.socket.Open()
+	framed := thrift.NewTFramedTransportMaxLength(p.socket, 16384000)
+
+	err := framed.Open()
 	if err != nil {
 		p.disconnect()
 		return err
 	}
 
 	p.client = hank.NewPartitionServerClientFactory(
-		thrift.NewTTransportFactory().GetTransport(p.socket),
-		thrift.NewTCompactProtocolFactory())
+		framed,
+		thrift.NewTCompactProtocolFactory(),
+	)
 
 	err = p.socket.SetTimeout(time.Duration(p.queryTimeoutMs * 1e6))
 	if err != nil {

@@ -37,7 +37,7 @@ func TestQueryWhenServing(t *testing.T) {
 	var wg sync.WaitGroup
 	server := thrift_services.Server(
 		handler,
-		thrift.NewTTransportFactory(),
+		thrift.NewTFramedTransportFactory(thrift.NewTTransportFactory()),
 		thrift.NewTCompactProtocolFactory(),
 		"127.0.0.1:12345")
 
@@ -64,7 +64,10 @@ func TestQueryWhenServing(t *testing.T) {
 		return conn.IsServing()
 	})
 
-	resp, _ := conn.Get(0, []byte("key1"))
+	resp, err := conn.Get(0, []byte("key1"))
+
+	fmt.Println(err)
+
 	assert.Equal(t, "value1", string(resp.Value))
 
 	server.Stop()

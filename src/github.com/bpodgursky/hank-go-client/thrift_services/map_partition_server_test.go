@@ -29,7 +29,7 @@ func TestMapPartitionServer(t *testing.T) {
 	var wg sync.WaitGroup
 	server := Server(
 		handler,
-		thrift.NewTTransportFactory(),
+		thrift.NewTFramedTransportFactory(thrift.NewTTransportFactory()),
 		thrift.NewTCompactProtocolFactory(),
 		PARTITION_SERVER_ADDRESS)
 
@@ -44,8 +44,11 @@ func TestMapPartitionServer(t *testing.T) {
 	var transport, _ = thrift.NewTSocket(PARTITION_SERVER_ADDRESS)
 	transport.Open()
 
+	framed := thrift.NewTFramedTransportMaxLength(transport, 16384000)
+	
+
 	client := hank.NewPartitionServerClientFactory(
-		thrift.NewTTransportFactory().GetTransport(transport),
+		framed,
 		thrift.NewTCompactProtocolFactory())
 
 	result, _ := client.Get(0, toBytes("key1"))
