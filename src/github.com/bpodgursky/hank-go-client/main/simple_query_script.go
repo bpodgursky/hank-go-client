@@ -17,6 +17,7 @@ func main() {
 	argsWithoutProg := os.Args[1:]
 
 	client := curator.NewClient(argsWithoutProg[0], curator.NewRetryNTimes(1, time.Second))
+	client.Start()
 
 	ctx := serializers.NewThreadCtx()
 
