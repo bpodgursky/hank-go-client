@@ -1,9 +1,9 @@
 package iface
 
 import (
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"strconv"
+	"github.com/bpodgursky/hank-go-client/serializers"
 )
 
 type Coordinator interface {

@@ -3,10 +3,10 @@ package watched_structs
 import (
 	"errors"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/curator-go/curator"
 	"path"
 	"path/filepath"
+	"github.com/bpodgursky/hank-go-client/serializers"
 )
 
 func AssertEmpty(client curator.CuratorFramework, fullPath string) error {

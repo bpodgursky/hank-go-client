@@ -4,11 +4,11 @@ import (
 	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"os"
 	"time"
-	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/iface"
 	"fmt"
 	"errors"
 	"strconv"
+	"github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/serializers"
 )
 
 type HankSmartClient struct {

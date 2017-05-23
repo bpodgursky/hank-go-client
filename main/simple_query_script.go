@@ -4,15 +4,15 @@ import (
 	"bufio"
 	"encoding/hex"
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/coordinator"
-	"github.com/bpodgursky/hank-go-client/hank_client"
-	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/curator-go/curator"
 	"log"
 	"os"
 	"strings"
 	"time"
+	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/bpodgursky/hank-go-client/coordinator"
+	"github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/hank_client"
 )
 
 func main() {
@@ -68,6 +68,10 @@ func main() {
 			return
 		}
 
+		//TODO get arl type
+		//
+		//ctx.ReadThriftBytes(bytes, )
+
 		val, err := conn.Get(domainId, bytes)
 		if err != nil {
 			fmt.Println(err)
@@ -84,8 +88,5 @@ func main() {
 
 	}
 
-	for {
-
-	}
 
 }

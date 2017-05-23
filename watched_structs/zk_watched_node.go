@@ -3,12 +3,12 @@ package watched_structs
 import (
 	"errors"
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/cenkalti/backoff"
 	"github.com/curator-go/curator"
 	"github.com/curator-go/curator/recipes/cache"
 	"github.com/samuel/go-zookeeper/zk"
 	"time"
+	"github.com/bpodgursky/hank-go-client/serializers"
 )
 
 type Constructor func() interface{}

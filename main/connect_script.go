@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/coordinator"
-	"github.com/bpodgursky/hank-go-client/hank_client"
 	"github.com/curator-go/curator"
 	"os"
 	"time"
+	"github.com/bpodgursky/hank-go-client/coordinator"
+	"github.com/bpodgursky/hank-go-client/hank_client"
 )
 
 func main() {

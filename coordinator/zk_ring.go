@@ -1,13 +1,13 @@
 package coordinator
 
 import (
-	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/watched_structs"
 	"github.com/curator-go/curator"
 	"path"
 	"regexp"
 	"strconv"
+	"github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/watched_structs"
+	"github.com/bpodgursky/hank-go-client/serializers"
 )
 
 var RING_REGEX = regexp.MustCompile("ring-([0-9]+)")

@@ -2,9 +2,9 @@ package watched_structs
 
 import (
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/curator-go/curator"
 	"strconv"
+	"github.com/bpodgursky/hank-go-client/serializers"
 )
 
 //  thrift

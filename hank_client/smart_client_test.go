@@ -2,10 +2,10 @@ package hank_client
 
 import (
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/coordinator"
+	"testing"
 	"github.com/bpodgursky/hank-go-client/fixtures"
 	"github.com/bpodgursky/hank-go-client/serializers"
-	"testing"
+	"github.com/bpodgursky/hank-go-client/coordinator"
 )
 
 func TestSmartClient(t *testing.T) {

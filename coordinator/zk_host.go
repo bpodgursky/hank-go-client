@@ -1,13 +1,13 @@
 package coordinator
 
 import (
-	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/watched_structs"
 	"github.com/curator-go/curator"
 	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"path"
 	"strings"
+	"github.com/bpodgursky/hank-go-client/watched_structs"
+	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/bpodgursky/hank-go-client/iface"
 )
 
 const ASSIGNMENTS_PATH string = "a"

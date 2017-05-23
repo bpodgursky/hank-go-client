@@ -5,8 +5,8 @@ import (
 	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"path"
 	"strconv"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/watched_structs"
+	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/iface"
 )
 
