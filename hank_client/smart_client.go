@@ -1,7 +1,6 @@
 package hank_client
 
 import (
-	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"os"
 	"time"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"strconv"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/bpodgursky/hank-go-client/hank_types"
 )
 
 type HankSmartClient struct {

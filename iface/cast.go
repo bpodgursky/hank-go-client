@@ -1,8 +1,7 @@
 package iface
 
-import (
-	"github.com/liveramp/hank/hank-core/src/main/go/hank"
-)
+
+import "github.com/bpodgursky/hank-go-client/hank_types"
 
 //  suuuuure
 type Getter func(name string) interface{}

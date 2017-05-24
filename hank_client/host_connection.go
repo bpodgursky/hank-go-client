@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"sync"
 	"time"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/bpodgursky/hank-go-client/hank_types"
 )
 
 type HostConnection struct {
