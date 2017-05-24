@@ -17,11 +17,6 @@ imports:
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
   subpackages:
   - spew
-- name: github.com/liveramp/hank
-  version: 02714809b158733750feab238985b1713b7b22e1
-  subpackages:
-  - hank
-  - hank-core/src/main/go/hank
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:

@@ -34,6 +34,3 @@ import:
 - package: google.golang.org/api
   subpackages:
   - compute/v1
-- package: github.com/liveramp/hank
-  subpackages:
-  - hank
