@@ -11,8 +11,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
-  "github.com/liveramp/hank/hank-core/src/main/go/hank"
   "github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/hank_types"
 )
 
 func TestLocalZkServer(t *testing.T) {

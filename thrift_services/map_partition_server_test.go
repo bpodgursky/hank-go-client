@@ -2,11 +2,11 @@ package thrift_services
 
 import (
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 	"time"
+	"github.com/bpodgursky/hank-go-client/hank_types"
 )
 
 const PARTITION_SERVER_ADDRESS = "127.0.0.1:56783"
