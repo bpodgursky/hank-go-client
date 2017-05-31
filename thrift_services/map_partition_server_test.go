@@ -27,7 +27,7 @@ func TestMapPartitionServer(t *testing.T) {
 
 	//	set up simple mock thrift partition server
 	var wg sync.WaitGroup
-	server := Server(
+	server := Serve(
 		handler,
 		thrift.NewTFramedTransportFactory(thrift.NewTTransportFactory()),
 		thrift.NewTCompactProtocolFactory(),

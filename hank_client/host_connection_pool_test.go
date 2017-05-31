@@ -9,7 +9,6 @@ import (
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/thrift_services"
 	"github.com/stretchr/testify/assert"
-	"sync"
 	"testing"
 )
 
@@ -92,8 +91,8 @@ func TestBothUp(t *testing.T) {
 	host1, _ := coordinator.CreateZkHost(ctx, client, "/hank/host/host1", "127.0.0.1", 12345, []string{})
 	host2, _ := coordinator.CreateZkHost(ctx, client, "/hank/host/host2", "127.0.0.1", 12346, []string{})
 
-	startServer(handler1, host1)
-	startServer(handler2, host2)
+	_, close1 := startServer(handler1, host1)
+	_, close2 := startServer(handler2, host2)
 
 	host1.SetState(ctx, iface.HOST_SERVING)
 	host2.SetState(ctx, iface.HOST_SERVING)
@@ -175,21 +174,19 @@ func TestBothUp(t *testing.T) {
 	assert.Equal(t, 5, handler2.numGets)
 	assert.Equal(t, 10, numHits)
 
+	h1conn1.Disconnect()
+	h2conn1.Disconnect()
+
+	close1()
+	close2()
+
 	fixtures.TeardownZookeeper(cluster, client)
 }
 
-func startServer(handler1 *CountingHandler, host iface.Host) (*thrift.TSimpleServer, *sync.WaitGroup) {
-	var wg sync.WaitGroup
-	server := thrift_services.Server(
+func startServer(handler1 *CountingHandler, host iface.Host) (*thrift.TSimpleServer, func()) {
+	return thrift_services.Serve(
 		handler1,
 		thrift.NewTFramedTransportFactory(thrift.NewTTransportFactory()),
 		thrift.NewTCompactProtocolFactory(),
 		host.GetAddress().Print())
-	wg.Add(1)
-	go func(wg *sync.WaitGroup) {
-		server.Serve()
-		wg.Done()
-	}(&wg)
-
-	return server, &wg
 }

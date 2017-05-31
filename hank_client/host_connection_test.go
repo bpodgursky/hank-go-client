@@ -11,7 +11,6 @@ import (
 	"github.com/bpodgursky/hank-go-client/thrift_services"
 	"github.com/stretchr/testify/assert"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
@@ -34,18 +33,11 @@ func TestQueryWhenServing(t *testing.T) {
 	handler := thrift_services.NewPartitionServerHandler(testData)
 
 	//	set up simple mock thrift partition server
-	var wg sync.WaitGroup
-	server := thrift_services.Server(
+	_, close := thrift_services.Serve(
 		handler,
 		thrift.NewTFramedTransportFactory(thrift.NewTTransportFactory()),
 		thrift.NewTCompactProtocolFactory(),
 		"127.0.0.1:12345")
-
-	wg.Add(1)
-	go func() {
-		server.Serve()
-		wg.Done()
-	}()
 
 	host.SetState(ctx, iface.HOST_IDLE)
 
@@ -69,8 +61,7 @@ func TestQueryWhenServing(t *testing.T) {
 	assert.Equal(t, "value1", string(resp.Value))
 
 	conn.Disconnect()
-	server.Stop()
-	wg.Wait()
+	close()
 
 	fixtures.TeardownZookeeper(cluster, client)
 }
@@ -98,17 +89,11 @@ func TestTimeouts(t *testing.T) {
 	}
 
 	//	set up simple mock thrift partition server
-	var wg sync.WaitGroup
-	server := thrift_services.Server(
+	_, closeServer := thrift_services.Serve(
 		&SlowPartitionServerHandler{},
 		thrift.NewTFramedTransportFactory(thrift.NewTTransportFactory()),
 		thrift.NewTCompactProtocolFactory(),
 		"127.0.0.1:12345")
-	wg.Add(1)
-	go func() {
-		server.Serve()
-		wg.Done()
-	}()
 
 	host.SetState(ctx, iface.HOST_SERVING)
 
@@ -123,8 +108,7 @@ func TestTimeouts(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "i/o timeout"))
 
 	conn.Disconnect()
-	server.Stop()
-	wg.Wait()
+	closeServer()
 
 	fixtures.TeardownZookeeper(cluster, client)
 }

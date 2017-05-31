@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
 	"github.com/bpodgursky/hank-go-client/hank_types"
+	"sync"
 )
 
 type MapPartitionServerHandler struct {
@@ -47,11 +48,11 @@ func (p *MapPartitionServerHandler) GetBulk(domain_id int32, keys [][]byte) (r *
 
 }
 
-func Server(
+func Serve(
 	handler hank.PartitionServer,
 	transportFactory thrift.TTransportFactory,
 	protocolFactory thrift.TProtocolFactory,
-	addr string) *thrift.TSimpleServer {
+	addr string) (*thrift.TSimpleServer, func()) {
 
 	var transport, _ = thrift.NewTServerSocket(addr)
 
@@ -61,5 +62,16 @@ func Server(
 
 	fmt.Println("Starting the simple server... on ", addr)
 
-	return server
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		server.Serve()
+		wg.Done()
+	}(&wg)
+
+	return server, func() {
+		transport.Close()
+		server.Stop()
+		wg.Wait()
+	}
 }
