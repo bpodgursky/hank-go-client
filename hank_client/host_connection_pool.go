@@ -139,7 +139,7 @@ func buildConnections(connectionsByHost map[string][]*HostConnection, hostIndex 
 
 }
 
-func (p *HostConnectionPool) getConnectionFromPools(pools *ConnectionSet, keyHash int32, connection *IndexedHostConnection) *IndexedHostConnection {
+func (p *HostConnectionPool) getConnectionFromPools(pools *ConnectionSet, keyHash int32, connection *IndexedHostConnection) (*IndexedHostConnection, bool) {
 
 	p.incrementLock.Lock()
 	defer p.incrementLock.Unlock()
@@ -158,7 +158,7 @@ func (p *HostConnectionPool) getConnectionFromPools(pools *ConnectionSet, keyHas
 
 }
 
-func (p *HostConnectionPool) getConnectionToUseForKey(pool *ConnectionSet, keyHash int32) *IndexedHostConnection {
+func (p *HostConnectionPool) getConnectionToUseForKey(pool *ConnectionSet, keyHash int32) (*IndexedHostConnection, bool) {
 	return p.getNextConnectionToUse(keyHash%int32(len(pool.connections)), pool.connections)
 }
 
@@ -170,7 +170,7 @@ func (p *HostConnectionPool) getNextHostIndexToUse(previouslyUsedHostIndex int32
 	}
 }
 
-func (p *HostConnectionPool) getNextConnectionToUse(previouslyUsedHostIndex int32, connections [][]*IndexedHostConnection) *IndexedHostConnection {
+func (p *HostConnectionPool) getNextConnectionToUse(previouslyUsedHostIndex int32, connections [][]*IndexedHostConnection) (*IndexedHostConnection, bool) {
 
 	for tryId := 0; tryId < len(connections); tryId++ {
 
@@ -185,7 +185,7 @@ func (p *HostConnectionPool) getNextConnectionToUse(previouslyUsedHostIndex int3
 			}
 
 			if indexedConnection.connection.TryImmediateLock() {
-				return indexedConnection
+				return indexedConnection, true
 			}
 		}
 	}
@@ -203,11 +203,11 @@ func (p *HostConnectionPool) getNextConnectionToUse(previouslyUsedHostIndex int3
 
 		// If a host has one unavaible connection, it is itself unavailable.
 		// Move on to the next host. Otherwise, return it.
+
 		if connectionAndIndex.connection.IsServing() {
 			// Note: here the returned connection is not locked.
 			// Locking/unlocking it is not the responsibily of this method.
-
-			return connectionAndIndex
+			return connectionAndIndex, false
 		}
 	}
 
@@ -224,28 +224,28 @@ func (p *HostConnectionPool) getNextConnectionToUse(previouslyUsedHostIndex int3
 		hostConnections := connections[previouslyUsedHostIndex]
 
 		// Pick a random connection for that host, and use it only if it is offline
-		hostConnection := hostConnections[rand.Intn(len(connections))]
+		hostConnection := hostConnections[rand.Intn(len(hostConnections))]
 
 		if hostConnection.connection.IsOffline() {
-			return hostConnection
+			return hostConnection, false
 		}
 
 	}
 
 	// No available connection was found, return null
-	return nil
+	return nil, false
 
 }
 
-func (p *HostConnectionPool) getConnectionToUse(set *ConnectionSet) *IndexedHostConnection {
+func (p *HostConnectionPool) getConnectionToUse(set *ConnectionSet) (*IndexedHostConnection, bool) {
 
-	result := p.getNextConnectionToUse(set.previouslyUsedHostIndex, set.connections)
+	result, locked := p.getNextConnectionToUse(set.previouslyUsedHostIndex, set.connections)
 
 	if result != nil {
 		set.previouslyUsedHostIndex = result.hostIndex
 	}
 
-	return result
+	return result, locked
 }
 
 func newTrue() *bool {
@@ -273,7 +273,7 @@ func FailedRetriesResponse(retries int32) *hank.HankResponse {
 	return resp
 }
 
-func (p *HostConnectionPool) attemptQuery(connection *IndexedHostConnection, domain iface.Domain, key []byte, numTries int32, maxNumTries int32) *hank.HankResponse {
+func (p *HostConnectionPool) attemptQuery(connection *IndexedHostConnection, isLockHeld bool, domain iface.Domain, key []byte, numTries int32, maxNumTries int32) *hank.HankResponse {
 	domainId := domain.GetId()
 
 	if connection == nil {
@@ -286,7 +286,7 @@ func (p *HostConnectionPool) attemptQuery(connection *IndexedHostConnection, dom
 
 		// Perform query
 
-		resp, err := connection.connection.Get(domainId, key)
+		resp, err := connection.connection.Get(domainId, key, isLockHeld)
 
 		if resp != nil {
 			return resp
@@ -321,53 +321,9 @@ func (p *HostConnectionPool) attemptQuery(connection *IndexedHostConnection, dom
 				return FailedRetriesResponse(numTries)
 			}
 		}
-
 	}
-
 }
 
-//private HankResponse attemptQuery(HostConnectionAndHostIndex connectionAndHostIndex, Domain domain, ByteBuffer key, int numTries, int maxNumTries) {
-//int domainId = domain.getId();
-//
-//// If we couldn't find any available connection, return corresponding error response
-//if (connectionAndHostIndex == null) {
-//LOG.error("No connection is available. Giving up with "+numTries+"/"+maxNumTries+" attempts. Domain = " + domain.getName() + ", Key=" + BytesUtils.bytesToHexString(key)+"\n"+
-//"Local pools: "+preferredPools+"\n"+
-//"Non-local pools: "+otherPools
-//);
-//
-//return NO_CONNECTION_AVAILABLE_RESPONSE;
-//} else {
-//// Perform query
-//try {
-//return connectionAndHostIndex.hostConnection.get(domainId, key);
-//} catch (IOException e) {
-//// In case of error, keep count of the number of times we retry
-//if (numTries < maxNumTries) {
-//// Simply log the error and retry
-//LOG.error("Failed to perform query with host: "
-//+ connectionAndHostIndex.hostConnection.getHost().getAddress()
-//+ ". Retrying. Try " + numTries + "/" + maxNumTries
-//+ ", Domain = " + domain.getName()
-//+ ", Key = " + BytesUtils.bytesToHexString(key), e);
-//
-//return null;
-//} else {
-//// If we have exhausted tries, return an exception response
-//LOG.error("Failed to perform query with host: "
-//+ connectionAndHostIndex.hostConnection.getHost().getAddress()
-//+ ". Giving up. Try " + numTries + "/" + maxNumTries
-//+ ", Domain = " + domain.getName()
-//+ ", Key = " + BytesUtils.bytesToHexString(key), e);
-//return HankResponse.xception(HankException.failed_retries(maxNumTries));
-//}
-//}
-//
-//}
-//
-//}
-
-//  public HankResponse get(Domain domain, ByteBuffer key, int maxNumTries, Integer keyHash) {
 func (p *HostConnectionPool) Get(domain iface.Domain, key []byte, maxNumTries int32, keyHash int32) *hank.HankResponse {
 
 	var indexedConnection *IndexedHostConnection
@@ -383,11 +339,11 @@ func (p *HostConnectionPool) Get(domain iface.Domain, key []byte, maxNumTries in
 
 		//	Either get a connection to an arbitrary host, or get a connection skipping the
 		//	previous host used (since it failed)
-		indexedConnection = p.getConnectionFromPools(p.preferredPools, keyHash, indexedConnection)
+		indexedConnection, locked := p.getConnectionFromPools(p.preferredPools, keyHash, indexedConnection)
 
 		numPreferredTries++
 
-		response := p.attemptQuery(indexedConnection, domain, key, numPreferredTries, maxNumTries)
+		response := p.attemptQuery(indexedConnection, locked, domain, key, numPreferredTries, maxNumTries)
 
 		if response != nil {
 			return response
@@ -397,10 +353,10 @@ func (p *HostConnectionPool) Get(domain iface.Domain, key []byte, maxNumTries in
 
 	for true {
 
-		indexedConnection = p.getConnectionFromPools(p.otherPools, keyHash, indexedConnection)
+		indexedConnection, locked := p.getConnectionFromPools(p.otherPools, keyHash, indexedConnection)
 		numOtherTries++
 
-		resp := p.attemptQuery(indexedConnection, domain, key, numPreferredTries+numOtherTries, maxNumTries)
+		resp := p.attemptQuery(indexedConnection, locked, domain, key, numPreferredTries+numOtherTries, maxNumTries)
 
 		if resp != nil {
 			return resp

@@ -10,10 +10,10 @@ import (
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/thrift_services"
 	"github.com/stretchr/testify/assert"
+	"strings"
 	"sync"
 	"testing"
 	"time"
-	"strings"
 )
 
 func TestQueryWhenServing(t *testing.T) {
@@ -54,7 +54,7 @@ func TestQueryWhenServing(t *testing.T) {
 	})
 
 	conn, _ := NewHostConnection(host, 100, 100, 100, 100)
-	_, idleGetErr := conn.Get(0, []byte("key1"))
+	_, idleGetErr := conn.Get(0, []byte("key1"), false)
 
 	assert.Equal(t, "Connection to host is not available (host is not serving).", idleGetErr.Error())
 
@@ -64,12 +64,11 @@ func TestQueryWhenServing(t *testing.T) {
 		return conn.IsServing()
 	})
 
-	resp, err := conn.Get(0, []byte("key1"))
-
-	fmt.Println(err)
+	resp, err := conn.Get(0, []byte("key1"), false)
 
 	assert.Equal(t, "value1", string(resp.Value))
 
+	conn.Disconnect()
 	server.Stop()
 	wg.Wait()
 
@@ -119,7 +118,8 @@ func TestTimeouts(t *testing.T) {
 		return conn.IsServing()
 	})
 
-	_, err = conn.Get(0, []byte("key1"))
+	_, err = conn.Get(0, []byte("key1"), false)
+
 	assert.True(t, strings.Contains(err.Error(), "i/o timeout"))
 
 	conn.Disconnect()

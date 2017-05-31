@@ -105,13 +105,20 @@ func (p *HostConnection) Unlock() {
 	p.lock.Unlock()
 }
 
-//	this is NOT threadsafe.  since Golang doesn't have reentrant locks b/c it is too primitive, acquire the locks
-//	yourself.
-func (p *HostConnection) Get(id iface.DomainID, key []byte) (*hank.HankResponse, error) {
+func (p *HostConnection) Get(id iface.DomainID, key []byte, isLockHeld bool) (*hank.HankResponse, error) {
 
 	if !p.IsServing() && !p.IsOffline() {
 		return nil, errors.New("Connection to host is not available (host is not serving).")
 	}
+
+	if !isLockHeld {
+		acquired := p.TryLockWithTimeout()
+		if !acquired {
+			return nil, errors.New("Exceeded timeout while trying to lock the host connection.")
+		}
+	}
+
+	defer p.Unlock()
 
 	if p.IsDisconnected() {
 		err := p.connect()

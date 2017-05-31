@@ -72,7 +72,7 @@ func main() {
 		//
 		//ctx.ReadThriftBytes(bytes, )
 
-		val, err := conn.Get(domainId, bytes)
+		val, err := conn.Get(domainId, bytes, false)
 		if err != nil {
 			fmt.Println(err)
 			return

@@ -1,7 +1,6 @@
 package hank_client
 
 import (
-	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
 	"github.com/bpodgursky/hank-go-client/coordinator"
 	"github.com/bpodgursky/hank-go-client/fixtures"
@@ -31,6 +30,11 @@ type ConstValue struct {
 
 func (p *ConstValue) get(int iface.DomainID, key []byte) (*hank.HankResponse, error) {
 	return p.val, nil
+}
+
+func (p *CountingHandler) Clear() {
+	p.numGets = 0
+	p.numCompletedGets = 0
 }
 
 func (p *CountingHandler) Get(domain_id int32, key []byte) (r *hank.HankResponse, err error) {
@@ -112,6 +116,52 @@ func TestBothUp(t *testing.T) {
 
 	pool, _ := NewHostConnectionPool(hostConnections, NO_SEED, []string{})
 	numHits := 0
+
+	for i := 0; i < 10; i++ {
+		val := pool.Get(domain, Key1(), 1, NO_HASH)
+		assert.Equal(t, Val1Str, string(val.Value))
+		if val.IsSetValue() {
+			numHits++
+		}
+	}
+
+	assert.Equal(t, 5, handler1.numGets)
+	assert.Equal(t, 5, handler2.numGets)
+	assert.Equal(t, 10, numHits)
+
+	//	take one host down, expect all queries on the other
+
+	host2.SetState(ctx, iface.HOST_OFFLINE)
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return h2conn1.IsOffline()
+	})
+
+	handler1.Clear()
+	handler2.Clear()
+	numHits = 0
+
+	for i := 0; i < 10; i++ {
+		val := pool.Get(domain, Key1(), 1, NO_HASH)
+		assert.Equal(t, Val1Str, string(val.Value))
+		if val.IsSetValue() {
+			numHits++
+		}
+	}
+
+	assert.Equal(t, 10, handler1.numGets)
+	assert.Equal(t, 0, handler2.numGets)
+	assert.Equal(t, 10, numHits)
+
+	//	if both are down, give it a shot anyway
+
+	host1.SetState(ctx, iface.HOST_OFFLINE)
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return h1conn1.IsOffline()
+	})
+
+	handler1.Clear()
+	handler2.Clear()
+	numHits = 0
 
 	for i := 0; i < 10; i++ {
 		val := pool.Get(domain, Key1(), 1, NO_HASH)
