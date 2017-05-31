@@ -44,7 +44,7 @@ func (p *MapPartitionServerHandler) GetBulk(domain_id int32, keys [][]byte) (r *
 }
 
 func Server(
-	handler *MapPartitionServerHandler,
+	handler hank.PartitionServer,
 	transportFactory thrift.TTransportFactory,
 	protocolFactory thrift.TProtocolFactory,
 	addr string) *thrift.TSimpleServer {

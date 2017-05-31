@@ -66,6 +66,6 @@ func (p *ZkDomain) GetName() string {
   return p.name
 }
 
-func (p *ZkDomain) GetId(ctx *serializers.ThreadCtx) iface.DomainID {
+func (p *ZkDomain) GetId() iface.DomainID {
   return iface.DomainID(iface.AsDomainMetadata(p.metadata.Get()).ID)
 }

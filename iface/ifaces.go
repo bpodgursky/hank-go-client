@@ -86,7 +86,7 @@ type Host interface {
 
 	AddDomain(ctx *serializers.ThreadCtx, domain Domain) (HostDomain, error)
 
-	GetAddress(ctx *serializers.ThreadCtx) *PartitionServerAddress
+	GetAddress() *PartitionServerAddress
 
 	GetHostDomain(ctx *serializers.ThreadCtx, domainId DomainID) HostDomain
 
@@ -103,7 +103,7 @@ type Domain interface {
 	//  stub
 
 	GetName() string
-	GetId(ctx *serializers.ThreadCtx) DomainID
+	GetId() DomainID
 }
 
 type HostDomainPartition interface {

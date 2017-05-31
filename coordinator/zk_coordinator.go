@@ -152,7 +152,7 @@ func (p *ZkCoordinator) GetDomainById(ctx *serializers.ThreadCtx, domainId iface
 
 	for _, inst := range p.domains.Values() {
 		domain := inst.(iface.Domain)
-		if domain.GetId(ctx) == domainId {
+		if domain.GetId() == domainId {
 			return domain, nil
 		}
 	}

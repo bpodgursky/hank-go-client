@@ -4,11 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"sync"
-	"time"
+	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/hank_types"
+	"time"
 )
 
 type HostConnection struct {
@@ -25,7 +24,7 @@ type HostConnection struct {
 
 	ctx *serializers.ThreadCtx
 
-	lock *sync.Mutex
+	lock *TimeoutMutex
 }
 
 func NewHostConnection(
@@ -42,7 +41,7 @@ func NewHostConnection(
 		establishConnectionTimeoutMs: establishConnectionTimeoutMs,
 		queryTimeoutMs:               queryTimeoutMs,
 		bulkQueryTimeoutMs:           bulkQueryTimeoutMs,
-		lock:                         &sync.Mutex{},
+		lock:                         NewMutex(),
 	}
 
 	host.AddStateChangeListener(&connection)
@@ -56,7 +55,7 @@ func NewHostConnection(
 
 }
 
-func (p *HostConnection) disconnect() error {
+func (p *HostConnection) Disconnect() error {
 
 	var err error
 
@@ -84,29 +83,48 @@ func (p *HostConnection) IsDisconnected() bool {
 	return p.client == nil
 }
 
+func (p *HostConnection) TryImmediateLock() bool {
+	return p.lock.TryLockNoWait()
+}
+
+func (p *HostConnection) TryLockWithTimeout() bool {
+
+	if p.tryLockTimeoutMs == 0 {
+		p.lock.Lock()
+		return true
+	}
+
+	return p.lock.TryLock(time.Duration(p.tryLockTimeoutMs) * time.Millisecond)
+}
+
+func (p *HostConnection) Lock() {
+	p.lock.Lock()
+}
+
+func (p *HostConnection) Unlock() {
+	p.lock.Unlock()
+}
+
+//	this is NOT threadsafe.  since Golang doesn't have reentrant locks b/c it is too primitive, acquire the locks
+//	yourself.
 func (p *HostConnection) Get(id iface.DomainID, key []byte) (*hank.HankResponse, error) {
 
-	defer p.lock.Unlock()
-
-	//	TODO figure out lock timeouts in this fucking trash language
-	p.lock.Lock()
-
 	if !p.IsServing() && !p.IsOffline() {
-		fmt.Println("returning some bs")
 		return nil, errors.New("Connection to host is not available (host is not serving).")
 	}
 
 	if p.IsDisconnected() {
 		err := p.connect()
 		if err != nil {
-			p.disconnect()
+			p.Disconnect()
 			return nil, err
 		}
 	}
 
 	resp, err := p.client.Get(int32(id), key)
+
 	if err != nil {
-		p.disconnect()
+		p.Disconnect()
 		return nil, err
 	}
 
@@ -116,12 +134,13 @@ func (p *HostConnection) Get(id iface.DomainID, key []byte) (*hank.HankResponse,
 
 func (p *HostConnection) connect() error {
 
-	p.socket, _ = thrift.NewTSocketTimeout(p.host.GetAddress(p.ctx).Print(), time.Duration(p.establishConnectionTimeoutMs*1e6))
+	p.socket, _ = thrift.NewTSocketTimeout(p.host.GetAddress().Print(), time.Duration(p.establishConnectionTimeoutMs*1e6))
 	framed := thrift.NewTFramedTransportMaxLength(p.socket, 16384000)
 
 	err := framed.Open()
 	if err != nil {
-		p.disconnect()
+		fmt.Println(err)
+		p.Disconnect()
 		return err
 	}
 
@@ -132,7 +151,7 @@ func (p *HostConnection) connect() error {
 
 	err = p.socket.SetTimeout(time.Duration(p.queryTimeoutMs * 1e6))
 	if err != nil {
-		p.disconnect()
+		p.Disconnect()
 		return err
 	}
 
@@ -147,10 +166,10 @@ func (p *HostConnection) OnDataChange(newVal interface{}) error {
 
 	newState := iface.HostState(newVal.(string))
 
-	defer p.lock.Unlock()
-	p.lock.Lock()
+	defer p.Unlock()
+	p.Lock()
 
-	disconnectErr := p.disconnect()
+	disconnectErr := p.Disconnect()
 	if disconnectErr != nil {
 		fmt.Print("Error disconnecting: ", disconnectErr)
 	}
@@ -159,13 +178,12 @@ func (p *HostConnection) OnDataChange(newVal interface{}) error {
 
 		err := p.connect()
 		if err != nil {
-			fmt.Print("Error connecting to host "+p.host.GetAddress(p.ctx).Print(), err)
+			fmt.Print("Error connecting to host "+p.host.GetAddress().Print(), err)
 			return err
 		}
 
 	}
 
-	fmt.Println("updating host state to ", newState)
 	p.hostState = newState
 
 	return nil

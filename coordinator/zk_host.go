@@ -201,7 +201,7 @@ func (p *ZkHost) GetState() iface.HostState {
 }
 
 func (p *ZkHost) AddDomain(ctx *serializers.ThreadCtx, domain iface.Domain) (iface.HostDomain, error) {
-	domainId := domain.GetId(ctx)
+	domainId := domain.GetId()
 
 	_, err := p.assignedPartitions.Update(ctx, func(orig interface{}) interface{} {
 		metadata := iface.AsHostAssignmentsMetadata(orig)
@@ -224,7 +224,7 @@ func ensureDomain(metadata *hank.HostAssignmentsMetadata, domainId iface.DomainI
 	}
 }
 
-func (p *ZkHost) GetAddress(ctx *serializers.ThreadCtx) *iface.PartitionServerAddress {
+func (p *ZkHost) GetAddress() *iface.PartitionServerAddress {
 	metadata := iface.AsHostMetadata(p.metadata.Get())
 	return &iface.PartitionServerAddress{HostName: metadata.HostName, PortNumber: metadata.PortNumber}
 }

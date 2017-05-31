@@ -105,10 +105,10 @@ func (p*HankSmartClient) buildNewConnectionCache(
 			fmt.Println("Building cache for host: ", host)
 
 			if p.isPreferredHost(host) {
-				preferredHosts = append(preferredHosts, host.GetAddress(ctx).Print())
+				preferredHosts = append(preferredHosts, host.GetAddress().Print())
 			}
 
-			address := host.GetAddress(ctx)
+			address := host.GetAddress()
 			fmt.Println("Loading partition metadata for Host: ", address)
 
 			for _, hostDomain := range host.GetAssignedDomains(ctx) {
@@ -118,7 +118,7 @@ func (p*HankSmartClient) buildNewConnectionCache(
 					return err
 				}
 
-				domainId := domain.GetId(ctx)
+				domainId := domain.GetId()
 
 				if domain == nil {
 					return errors.New("Domain not found " + strconv.Itoa(int(domainId)))
@@ -156,7 +156,7 @@ func (p*HankSmartClient) buildNewConnectionCache(
 
 				hostConnections := []*HostConnection{}
 
-				fmt.Println("Establishing " + strconv.Itoa(int(opts.NumConnectionsPerHost)) + " connections to " + host.GetAddress(ctx).Print() +
+				fmt.Println("Establishing " + strconv.Itoa(int(opts.NumConnectionsPerHost)) + " connections to " + host.GetAddress().Print() +
 					"with connection try lock timeout = " + strconv.Itoa(int(opts.TryLockTimeoutMs)) + "ms, " +
 					"connection establisment timeout = " + strconv.Itoa(int(opts.EstablishConnectionTimeoutMs)) + "ms, " +
 					"query timeout = " + strconv.Itoa(int(opts.QueryTimeoutMs)) + "ms")
@@ -181,7 +181,8 @@ func (p*HankSmartClient) buildNewConnectionCache(
 
 				}
 
-				pool = CreateHostConnectionPool(ctx, hostConnections, -1, preferredHosts)
+				//	TODO what
+				//pool, err = CreateHostConnectionPool(ctx, hostConnections, -1, preferredHosts)
 
 			}
 
