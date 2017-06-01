@@ -8,7 +8,9 @@ import (
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/thrift_services"
+	"github.com/curator-go/curator"
 	"github.com/stretchr/testify/assert"
+	"strconv"
 	"testing"
 )
 
@@ -72,15 +74,48 @@ func Key1() []byte {
 	return []byte("1")
 }
 
+func setupCountingServerClient(t *testing.T, ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
+
+	handler := &CountingHandler{internal: &ConstValue{val: Val1()}}
+
+	host, _ := createHost(ctx, client, i)
+	_, close := startServer(handler, host)
+
+	host.SetState(ctx, iface.HOST_SERVING)
+
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return host.GetState() == iface.HOST_SERVING
+	})
+
+	conn, _ := NewHostConnection(host, 100, 100, 100, 100)
+
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return conn.IsServing()
+	})
+
+	return handler, host, close, conn
+}
+
+func byAddress(connections []*HostConnection) map[string][]*HostConnection {
+	hostConnections := make(map[string][]*HostConnection)
+
+	for _, conn := range connections {
+		addr := conn.host.GetAddress().Print()
+
+		if _, ok := hostConnections[addr]; !ok {
+			hostConnections[addr] = []*HostConnection{}
+		}
+
+		hostConnections[addr] = append(hostConnections[addr], conn)
+	}
+
+	return hostConnections
+}
+
 func TestBothUp(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	//	set up simple mock thrift partition server
-	handler1 := &CountingHandler{internal: &ConstValue{val: Val1()}}
-	handler2 := &CountingHandler{internal: &ConstValue{val: Val1()}}
-
 	ctx := serializers.NewThreadCtx()
-
 	cdr, _ := coordinator.NewZkCoordinator(client,
 		"/hank/domains",
 		"/hank/ring_groups",
@@ -88,41 +123,12 @@ func TestBothUp(t *testing.T) {
 	)
 	domain, _ := cdr.AddDomain(ctx, "domain1", 1, "", "", "", nil)
 
-	host1, _ := coordinator.CreateZkHost(ctx, client, "/hank/host/host1", "127.0.0.1", 12345, []string{})
-	host2, _ := coordinator.CreateZkHost(ctx, client, "/hank/host/host2", "127.0.0.1", 12346, []string{})
+	handler1, host1, close1, h1conn1 := setupCountingServerClient(t, ctx, client, 1)
+	handler2, host2, close2, h2conn1 := setupCountingServerClient(t, ctx, client, 2)
 
-	_, close1 := startServer(handler1, host1)
-	_, close2 := startServer(handler2, host2)
+	pool, _ := NewHostConnectionPool(byAddress([]*HostConnection{h1conn1, h2conn1}), NO_SEED, []string{})
 
-	host1.SetState(ctx, iface.HOST_SERVING)
-	host2.SetState(ctx, iface.HOST_SERVING)
-
-	fixtures.WaitUntilOrDie(t, func() bool {
-		return host1.GetState() == iface.HOST_SERVING && host2.GetState() == iface.HOST_SERVING
-	})
-
-	h1conn1, _ := NewHostConnection(host1, 100, 100, 100, 100)
-	h2conn1, _ := NewHostConnection(host2, 100, 100, 100, 100)
-
-	fixtures.WaitUntilOrDie(t, func() bool {
-		return h1conn1.IsServing() && h2conn1.IsServing()
-	})
-
-	hostConnections := make(map[string][]*HostConnection)
-
-	hostConnections[host1.GetAddress().Print()] = []*HostConnection{h1conn1}
-	hostConnections[host2.GetAddress().Print()] = []*HostConnection{h2conn1}
-
-	pool, _ := NewHostConnectionPool(hostConnections, NO_SEED, []string{})
-	numHits := 0
-
-	for i := 0; i < 10; i++ {
-		val := pool.Get(domain, Key1(), 1, NO_HASH)
-		assert.Equal(t, Val1Str, string(val.Value))
-		if val.IsSetValue() {
-			numHits++
-		}
-	}
+	numHits := queryKey(pool, domain, t, 10, 1, Val1Str)
 
 	assert.Equal(t, 5, handler1.numGets)
 	assert.Equal(t, 5, handler2.numGets)
@@ -137,15 +143,8 @@ func TestBothUp(t *testing.T) {
 
 	handler1.Clear()
 	handler2.Clear()
-	numHits = 0
 
-	for i := 0; i < 10; i++ {
-		val := pool.Get(domain, Key1(), 1, NO_HASH)
-		assert.Equal(t, Val1Str, string(val.Value))
-		if val.IsSetValue() {
-			numHits++
-		}
-	}
+	numHits = queryKey(pool, domain, t, 10, 1, Val1Str)
 
 	assert.Equal(t, 10, handler1.numGets)
 	assert.Equal(t, 0, handler2.numGets)
@@ -162,13 +161,7 @@ func TestBothUp(t *testing.T) {
 	handler2.Clear()
 	numHits = 0
 
-	for i := 0; i < 10; i++ {
-		val := pool.Get(domain, Key1(), 1, NO_HASH)
-		assert.Equal(t, Val1Str, string(val.Value))
-		if val.IsSetValue() {
-			numHits++
-		}
-	}
+	numHits = queryKey(pool, domain, t, 10, 1, Val1Str)
 
 	assert.Equal(t, 5, handler1.numGets)
 	assert.Equal(t, 5, handler2.numGets)
@@ -181,6 +174,29 @@ func TestBothUp(t *testing.T) {
 	close2()
 
 	fixtures.TeardownZookeeper(cluster, client)
+}
+
+func TestSimplePreferredPool(t *testing.T) {
+
+	
+
+}
+
+
+func queryKey(pool *HostConnectionPool, domain iface.Domain, t *testing.T, times int, numTries int32, expected string) (int){
+	numHits := 0
+	for i := 0; i < times; i++ {
+		val := pool.Get(domain, Key1(), numTries, NO_HASH)
+		assert.Equal(t, expected, string(val.Value))
+		if val.IsSetValue() {
+			numHits++
+		}
+	}
+	return numHits
+}
+
+func createHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int) (iface.Host, error) {
+	return coordinator.CreateZkHost(ctx, client, "/hank/host/host"+strconv.Itoa(i), "127.0.0.1", 12345+i, []string{})
 }
 
 func startServer(handler1 *CountingHandler, host iface.Host) (*thrift.TSimpleServer, func()) {
