@@ -17,14 +17,10 @@ func NewPartitionServerHandler(mockData map[string]string) *MapPartitionServerHa
 
 //	assume everything is in one domain for testing
 func (p *MapPartitionServerHandler) Get(domain_id int32, key []byte) (r *hank.HankResponse, err error) {
-
-	fmt.Println("generating response")
 	var response = hank.NewHankResponse()
 	response.Value = []byte(p.mockData[string(key)])
 	response.NotFound = newFalse()
 	response.Xception = nil
-
-	fmt.Println("returning: ", response)
 	return response, nil
 }
 

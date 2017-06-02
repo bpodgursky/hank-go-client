@@ -3,7 +3,6 @@ package thrift_services
 import (
 	"git.apache.org/thrift.git/lib/go/thrift"
 	"github.com/stretchr/testify/assert"
-	"sync"
 	"testing"
 	"time"
 	"github.com/bpodgursky/hank-go-client/hank_types"
@@ -26,18 +25,12 @@ func TestMapPartitionServer(t *testing.T) {
 	handler := NewPartitionServerHandler(testData)
 
 	//	set up simple mock thrift partition server
-	var wg sync.WaitGroup
-	server := Serve(
+	_, close := Serve(
 		handler,
 		thrift.NewTFramedTransportFactory(thrift.NewTTransportFactory()),
 		thrift.NewTCompactProtocolFactory(),
 		PARTITION_SERVER_ADDRESS)
 
-	wg.Add(1)
-	go func() {
-		server.Serve()
-		wg.Done()
-	}()
 
 	time.Sleep(time.Second)
 
@@ -54,8 +47,7 @@ func TestMapPartitionServer(t *testing.T) {
 	result, _ := client.Get(0, toBytes("key1"))
 	assert.Equal(t, toBytes("value1"), result.Value)
 
-	server.Stop()
-
-	wg.Wait()
+	transport.Close()
+	close()
 
 }

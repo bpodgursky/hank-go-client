@@ -19,24 +19,13 @@ func Exception() *hank.HankResponse {
 	resp := &hank.HankResponse{}
 
 	exception := &hank.HankException{}
-	exception.WrongHost = newFalse()
-	exception.NoSuchDomain = newFalse()
-	exception.NoReplica = newFalse()
-	exception.NoConnectionAvailable = newFalse()
-	exception.FailedRetries = newNumRef(-1)
 	exception.InternalError = newStrRef("Internal Error")
-
-	resp.Value = []byte("test")
 	resp.Xception = exception
-	resp.NotFound = newFalse()
+
 	return resp
 }
 
 func newStrRef(val string) *string {
-	return &val
-}
-
-func newNumRef(val int32) *int32 {
 	return &val
 }
 
