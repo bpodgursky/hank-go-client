@@ -238,7 +238,6 @@ func (p *HostConnectionPool) getNextConnectionToUse(previouslyUsedHostIndex int3
 }
 
 func (p *HostConnectionPool) getConnectionToUse(set *ConnectionSet) (*IndexedHostConnection, bool) {
-
 	result, locked := p.getNextConnectionToUse(set.previouslyUsedHostIndex, set.connections)
 
 	if result != nil {
@@ -327,6 +326,8 @@ func (p *HostConnectionPool) attemptQuery(connection *IndexedHostConnection, isL
 func (p *HostConnectionPool) Get(domain iface.Domain, key []byte, maxNumTries int32, keyHash int32) *hank.HankResponse {
 
 	var indexedConnection *IndexedHostConnection
+	var locked bool
+
 	numPreferredTries := int32(0)
 	numOtherTries := int32(0)
 
@@ -339,7 +340,7 @@ func (p *HostConnectionPool) Get(domain iface.Domain, key []byte, maxNumTries in
 
 		//	Either get a connection to an arbitrary host, or get a connection skipping the
 		//	previous host used (since it failed)
-		indexedConnection, locked := p.getConnectionFromPools(p.preferredPools, keyHash, indexedConnection)
+		indexedConnection, locked = p.getConnectionFromPools(p.preferredPools, keyHash, indexedConnection)
 
 		numPreferredTries++
 

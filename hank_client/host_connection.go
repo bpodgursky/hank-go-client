@@ -133,6 +133,10 @@ func (p *HostConnection) Get(id iface.DomainID, key []byte, isLockHeld bool) (*h
 	if err != nil {
 		p.Disconnect()
 		return nil, err
+	} else if resp.IsSetXception() {
+		fmt.Println(resp.Xception)
+		p.Disconnect()
+		return nil, errors.New("Exception from server")
 	}
 
 	return resp, nil
