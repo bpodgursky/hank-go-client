@@ -107,10 +107,6 @@ func (p *HostConnection) Unlock() {
 
 func (p *HostConnection) Get(id iface.DomainID, key []byte, isLockHeld bool) (*hank.HankResponse, error) {
 
-	if !p.IsServing() && !p.IsOffline() {
-		return nil, errors.New("Connection to host is not available (host is not serving).")
-	}
-
 	if !isLockHeld {
 		acquired := p.TryLockWithTimeout()
 		if !acquired {
@@ -118,12 +114,16 @@ func (p *HostConnection) Get(id iface.DomainID, key []byte, isLockHeld bool) (*h
 		}
 	}
 
-	defer p.Unlock()
+	if !p.IsServing() && !p.IsOffline() {
+		p.Unlock()
+		return nil, errors.New("Connection to host is not available (host is not serving).")
+	}
 
 	if p.IsDisconnected() {
 		err := p.connect()
 		if err != nil {
 			p.Disconnect()
+			p.Unlock()
 			return nil, err
 		}
 	}
@@ -132,13 +132,16 @@ func (p *HostConnection) Get(id iface.DomainID, key []byte, isLockHeld bool) (*h
 
 	if err != nil {
 		p.Disconnect()
+		p.Unlock()
 		return nil, err
 	} else if resp.IsSetXception() {
 		fmt.Println(resp.Xception)
 		p.Disconnect()
+		p.Unlock()
 		return nil, errors.New("Exception from server")
 	}
 
+	p.Unlock()
 	return resp, nil
 
 }
@@ -177,7 +180,6 @@ func (p *HostConnection) OnDataChange(newVal interface{}) error {
 
 	newState := iface.HostState(newVal.(string))
 
-	defer p.Unlock()
 	p.Lock()
 
 	disconnectErr := p.Disconnect()
@@ -190,6 +192,7 @@ func (p *HostConnection) OnDataChange(newVal interface{}) error {
 		err := p.connect()
 		if err != nil {
 			fmt.Print("Error connecting to host "+p.host.GetAddress().Print(), err)
+			p.Unlock()
 			return err
 		}
 
@@ -197,6 +200,7 @@ func (p *HostConnection) OnDataChange(newVal interface{}) error {
 
 	p.hostState = newState
 
+	p.Unlock()
 	return nil
 
 }

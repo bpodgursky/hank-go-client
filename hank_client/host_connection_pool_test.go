@@ -12,6 +12,7 @@ import (
 	"github.com/curator-go/curator"
 	"github.com/stretchr/testify/assert"
 	"strconv"
+	"sync"
 	"testing"
 )
 
@@ -34,24 +35,6 @@ type CountingHandler struct {
 	numCompletedGets int
 
 	internal InternalHandler
-}
-
-type InternalHandler interface {
-	get(int iface.DomainID, key []byte) (*hank.HankResponse, error)
-}
-
-type ConstValue struct{ val *hank.HankResponse }
-
-func (p *ConstValue) get(int iface.DomainID, key []byte) (*hank.HankResponse, error) {
-	fmt.Println("Query w/ const")
-	return p.val, nil
-}
-
-type FailingValue struct{}
-
-func (p *FailingValue) get(int iface.DomainID, key []byte) (r *hank.HankResponse, err error) {
-	fmt.Println("Query w/ failure")
-	return Exception(), nil
 }
 
 func (p *CountingHandler) Clear() {
@@ -77,6 +60,29 @@ func (p *CountingHandler) GetBulk(domain_id int32, keys [][]byte) (r *hank.HankB
 	return nil, nil
 }
 
+type InternalHandler interface {
+	get(int iface.DomainID, key []byte) (*hank.HankResponse, error)
+}
+
+type ConstValue struct{ val *hank.HankResponse }
+
+func (p *ConstValue) get(int iface.DomainID, key []byte) (*hank.HankResponse, error) {
+	return p.val, nil
+}
+
+type FailingValue struct{}
+
+func (p *FailingValue) get(int iface.DomainID, key []byte) (r *hank.HankResponse, err error) {
+	return Exception(), nil
+}
+
+type HangingResponse struct{ lock *sync.Mutex }
+
+func (p *HangingResponse) get(int iface.DomainID, key []byte) (r *hank.HankResponse, err error) {
+	p.lock.Lock()
+	return nil, nil
+}
+
 const Val1Str = "1"
 
 func Val1() *hank.HankResponse {
@@ -93,6 +99,12 @@ func newFalse() *bool {
 
 func Key1() []byte {
 	return []byte("1")
+}
+
+func setupHangingServerClient(t *testing.T, ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int, lock *sync.Mutex) (*CountingHandler, iface.Host, func(), *HostConnection) {
+	handler := &CountingHandler{internal: &HangingResponse{lock: lock}}
+	host, close, conn := setupServerClient(t, handler, ctx, client, i)
+	return handler, host, close, conn
 }
 
 func setupCountingServerClient(t *testing.T, ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
@@ -319,6 +331,173 @@ func TestPreferredFallback(t *testing.T) {
 	close3()
 
 	fixtures.TeardownZookeeper(cluster, client)
+}
+
+func TestOneHankExceptions(t *testing.T) {
+	cluster, client := fixtures.SetupZookeeper(t)
+
+	ctx, domain := setUpCoordinator(client)
+
+	handler1, _, close1, h1conn1 := setupCountingServerClient(t, ctx, client, 1)
+	handler2, _, close2, h2conn1 := setupFailingServerClient(t, ctx, client, 2)
+
+	pool, _ := NewHostConnectionPool(byAddress([]*HostConnection{h1conn1, h2conn1}), NO_SEED, []string{})
+
+	numHits := queryKey(pool, domain, t, 10, 1, Val1Str)
+
+	assert.Equal(t, 5, handler1.numGets)
+	assert.Equal(t, 5, handler2.numGets)
+	assert.Equal(t, 5, numHits)
+
+	handler1.Clear()
+	handler2.Clear()
+	numHits = 0
+
+	numHits = queryKey(pool, domain, t, 10, 2, Val1Str)
+
+	assert.Equal(t, 10, handler1.numGets)
+	assert.Equal(t, 5, handler2.numGets)
+	assert.Equal(t, 10, numHits)
+
+	close1()
+	close2()
+
+	fixtures.TeardownZookeeper(cluster, client)
+}
+
+func TestOneHanging(t *testing.T) {
+	cluster, client := fixtures.SetupZookeeper(t)
+
+	lock := sync.Mutex{}
+	lock.Lock()
+
+	ctx, domain := setUpCoordinator(client)
+
+	handler1, _, close1, h1conn1 := setupHangingServerClient(t, ctx, client, 1, &lock)
+	handler2, _, close2, h2conn1 := setupCountingServerClient(t, ctx, client, 2)
+
+	pool, _ := NewHostConnectionPool(byAddress([]*HostConnection{h1conn1, h2conn1}), NO_SEED, []string{})
+
+	numHits := 0
+	previousIface1NumGets := 0
+
+	for i := 0; i < 10; i++ {
+		fmt.Println("\n")
+		val := pool.Get(domain, Key1(), 1, NO_HASH)
+		if val.IsSetValue() {
+			numHits++
+		}
+
+		//	looks confusing, but just making sure we hang until the retry succeeds
+		if handler1.numGets != previousIface1NumGets {
+			lock.Unlock()
+			previousIface1NumGets = handler1.numGets
+		}
+
+	}
+
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return handler1.numGets == 5 &&
+			handler1.numCompletedGets == 5 &&
+			handler2.numGets == 5 &&
+			handler2.numCompletedGets == 5
+	})
+
+	assert.Equal(t, 5, numHits)
+
+	handler1.Clear()
+	handler2.Clear()
+	numHits = 0
+
+	for i := 0; i < 10; i++ {
+		fmt.Println("\n")
+		val := pool.Get(domain, Key1(), 2, NO_HASH)
+		if val.IsSetValue() {
+			numHits++
+		}
+
+		//	looks confusing, but just making sure we hang until the retry succeeds
+		if handler1.numGets != previousIface1NumGets {
+			lock.Unlock()
+			previousIface1NumGets = handler1.numGets
+		}
+
+	}
+
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return handler1.numGets == 5 &&
+			handler1.numCompletedGets == 5 &&
+			handler2.numGets == 10 &&
+			handler2.numCompletedGets == 10
+	})
+
+	assert.Equal(t, 10, numHits)
+
+	close1()
+	close2()
+
+	fixtures.TeardownZookeeper(cluster, client)
+}
+
+func TestConsistentHashing(t *testing.T) {
+
+	cluster, client := fixtures.SetupZookeeper(t)
+
+	ctx, domain := setUpCoordinator(client)
+
+	handler1, host1, close1, h1conn1 := setupCountingServerClient(t, ctx, client, 1)
+	handler2, host2, close2, h2conn1 := setupCountingServerClient(t, ctx, client, 2)
+
+	for i := 0; i < 1024; i++ {
+
+		numHits := 0
+
+		poolA, _ := NewHostConnectionPool(byAddress([]*HostConnection{h1conn1, h2conn1}), int32(i), []string{
+			host1.GetAddress().Print(),
+			host2.GetAddress().Print(),
+		})
+
+		poolB, _ := NewHostConnectionPool(byAddress([]*HostConnection{h1conn1, h2conn1}), int32(i), []string{
+			host1.GetAddress().Print(),
+			host2.GetAddress().Print(),
+		})
+
+		keyHash := int32(42)
+
+		for j := 0; j < 10; j++ {
+
+			respA := poolA.Get(domain, []byte(Val1Str), 1, keyHash)
+			respB := poolB.Get(domain, []byte(Val1Str), 1, keyHash)
+
+			if respA.IsSetValue() && respB.IsSetValue() {
+				numHits += 2
+			}
+
+		}
+
+		allOne := (handler1.numGets == 20 && handler2.numGets == 0) || (handler1.numGets == 0 && handler2.numGets == 20)
+
+		if !allOne {
+			fmt.Println("\n")
+			fmt.Println(handler1.numGets)
+			fmt.Println(handler2.numGets)
+		}
+
+		assert.True(t, allOne)
+		assert.True(t, numHits == 20)
+
+		handler1.Clear()
+		handler2.Clear()
+
+		numHits = 0
+
+	}
+
+	close1()
+	close2()
+
+	fixtures.TeardownZookeeper(cluster, client)
+
 }
 
 func queryKey(pool *HostConnectionPool, domain iface.Domain, t *testing.T, times int, numTries int32, expected string) int {

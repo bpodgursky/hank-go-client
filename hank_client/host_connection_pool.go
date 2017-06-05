@@ -141,20 +141,23 @@ func buildConnections(connectionsByHost map[string][]*HostConnection, hostIndex 
 
 func (p *HostConnectionPool) getConnectionFromPools(pools *ConnectionSet, keyHash int32, connection *IndexedHostConnection) (*IndexedHostConnection, bool) {
 
+	var conn *IndexedHostConnection
+	var locked bool
+
 	p.incrementLock.Lock()
-	defer p.incrementLock.Unlock()
 
 	if connection == nil {
-
 		if keyHash == NO_HASH {
-			return p.getConnectionToUse(pools)
+			conn, locked = p.getConnectionToUse(pools)
 		} else {
-			return p.getConnectionToUseForKey(pools, keyHash)
+			conn, locked = p.getConnectionToUseForKey(pools, keyHash)
 		}
-
 	} else {
-		return p.getNextConnectionToUse(connection.hostIndex, pools.connections)
+		conn, locked = p.getNextConnectionToUse(connection.hostIndex, pools.connections)
 	}
+
+	p.incrementLock.Unlock()
+	return conn, locked
 
 }
 
@@ -354,7 +357,7 @@ func (p *HostConnectionPool) Get(domain iface.Domain, key []byte, maxNumTries in
 
 	for true {
 
-		indexedConnection, locked := p.getConnectionFromPools(p.otherPools, keyHash, indexedConnection)
+		indexedConnection, locked = p.getConnectionFromPools(p.otherPools, keyHash, indexedConnection)
 		numOtherTries++
 
 		resp := p.attemptQuery(indexedConnection, locked, domain, key, numPreferredTries+numOtherTries, maxNumTries)
