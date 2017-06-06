@@ -371,3 +371,22 @@ func (p *HostConnectionPool) Get(domain iface.Domain, key []byte, maxNumTries in
 	//	Go, you are a stupid compiler, this is unreachable.
 	return nil
 }
+
+func (p *HostConnectionPool) GetConnections() []*HostConnection {
+
+	all := []*HostConnection{}
+
+	for _, conns := range p.preferredPools.connections {
+		for _, conn := range conns {
+			all = append(all, conn.connection)
+		}
+	}
+
+	for _, conns := range p.otherPools.connections {
+		for _, conn := range conns {
+			all = append(all, conn.connection)
+		}
+	}
+
+	return all
+}

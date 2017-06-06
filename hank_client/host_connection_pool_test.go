@@ -2,16 +2,13 @@ package hank_client
 
 import (
 	"fmt"
-	"git.apache.org/thrift.git/lib/go/thrift"
 	"github.com/bpodgursky/hank-go-client/coordinator"
 	"github.com/bpodgursky/hank-go-client/fixtures"
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/thrift_services"
 	"github.com/curator-go/curator"
 	"github.com/stretchr/testify/assert"
-	"strconv"
 	"sync"
 	"testing"
 )
@@ -120,17 +117,9 @@ func setupFailingServerClient(t *testing.T, ctx *serializers.ThreadCtx, client c
 }
 
 func setupServerClient(t *testing.T, server hank.PartitionServer, ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int) (iface.Host, func(), *HostConnection) {
-	host, _ := createHost(ctx, client, i)
-	_, close := startServer(server, host)
-
-	host.SetState(ctx, iface.HOST_SERVING)
-
-	fixtures.WaitUntilOrDie(t, func() bool {
-		return host.GetState() == iface.HOST_SERVING
-	})
+	host, close := createServer(t, ctx, client, i, server)
 
 	conn, _ := NewHostConnection(host, 100, 100, 100, 100)
-
 	fixtures.WaitUntilOrDie(t, func() bool {
 		return conn.IsServing()
 	})
@@ -510,16 +499,4 @@ func queryKey(pool *HostConnectionPool, domain iface.Domain, t *testing.T, times
 		}
 	}
 	return numHits
-}
-
-func createHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int) (iface.Host, error) {
-	return coordinator.CreateZkHost(ctx, client, "/hank/host/host"+strconv.Itoa(i), "127.0.0.1", 12345+i, []string{})
-}
-
-func startServer(handler1 hank.PartitionServer, host iface.Host) (*thrift.TSimpleServer, func()) {
-	return thrift_services.Serve(
-		handler1,
-		thrift.NewTFramedTransportFactory(thrift.NewTTransportFactory()),
-		thrift.NewTCompactProtocolFactory(),
-		host.GetAddress().Print())
 }

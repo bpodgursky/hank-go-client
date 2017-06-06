@@ -9,6 +9,7 @@ import (
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/hank_types"
+	"sync"
 )
 
 type HankSmartClient struct {
@@ -17,9 +18,10 @@ type HankSmartClient struct {
 
 	options *hankSmartClientOptions
 
-	hostsByAddress             map[string]*iface.PartitionServerAddress
-	serverAddressToConnections map[string]*HostConnectionPool
-	domainToPartToConnections  map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool
+	hostsByAddress            map[string]*iface.PartitionServerAddress
+	serverToConnections       map[string]*HostConnectionPool
+	domainToPartToConnections map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool
+	connectionLock            *sync.Mutex
 }
 
 func NewHankSmartClient(
@@ -48,6 +50,7 @@ func NewHankSmartClient(
 													make(map[string]*iface.PartitionServerAddress),
 													make(map[string]*HostConnectionPool),
 													make(map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool),
+													&sync.Mutex{},
 	}, nil
 }
 
@@ -72,31 +75,58 @@ func (p *HankSmartClient) updateConnectionCache(ctx *serializers.ThreadCtx) {
 	fmt.Println("Loading Hank's smart client metadata cache and connections.")
 
 	newServerToConnections := make(map[string]*HostConnectionPool)
-
 	newDomainToPartitionToConnections := make(map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool)
 
-	p.buildNewConnectionCache(ctx, &newServerToConnections, &newDomainToPartitionToConnections)
+	p.buildNewConnectionCache(ctx, newServerToConnections, newDomainToPartitionToConnections)
+
+	oldServerToConnections := p.serverToConnections
+
+	// Switch old cache for new cache
+	p.connectionLock.Lock()
+	p.serverToConnections = newServerToConnections
+	p.domainToPartToConnections = newDomainToPartitionToConnections
+	p.connectionLock.Unlock()
+
+	for address, pool := range oldServerToConnections {
+
+		if _, ok := p.serverToConnections[address]; !ok {
+			for _, conn := range pool.GetConnections() {
+				conn.Disconnect()
+			}
+		}
+	}
 
 }
 
-func (p*HankSmartClient) isPreferredHost(host iface.Host) bool {
+func (p*HankSmartClient) isPreferredHost(ctx *serializers.ThreadCtx, host iface.Host) bool {
 
 	fmt.Println("Environment flags for host ", host)
 
-	//  TODO
+	flags := host.GetEnvironmentFlags(ctx)
+
+	if flags != nil && p.options.PreferredHostEnvironment != nil {
+		clientValue, ok := flags[p.options.PreferredHostEnvironment.Key]
+
+		if ok && clientValue == p.options.PreferredHostEnvironment.Value {
+			return true
+		}
+
+	}
+
 	return false
 }
 
 func (p*HankSmartClient) buildNewConnectionCache(
 	ctx *serializers.ThreadCtx,
-	newServerToConnections *map[string]*HostConnectionPool,
-	newDomainToPartitionToConnections *map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool) error {
+	newServerToConnections map[string]*HostConnectionPool,
+	newDomainToPartitionToConnections map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool) error {
 
 	//  this is horrible looking, and I'd love to use MultiMap, but I can't  because this horseshit,
 	//  gimp, special-ed language thinks that generics are too dangerous and just gives you fucking crayons
 	domainToPartToAddresses := make(map[iface.DomainID]map[iface.PartitionID][]*iface.PartitionServerAddress)
 
 	preferredHosts := []string{}
+	var err error
 
 	for _, ring := range p.ringGroup.GetRings() {
 		fmt.Println("Building connection cache for ", ring)
@@ -104,7 +134,7 @@ func (p*HankSmartClient) buildNewConnectionCache(
 		for _, host := range ring.GetHosts(ctx) {
 			fmt.Println("Building cache for host: ", host)
 
-			if p.isPreferredHost(host) {
+			if p.isPreferredHost(ctx, host) {
 				preferredHosts = append(preferredHosts, host.GetAddress().Print())
 			}
 
@@ -149,7 +179,7 @@ func (p*HankSmartClient) buildNewConnectionCache(
 			}
 
 			addressStr := address.Print()
-			pool := p.serverAddressToConnections[addressStr]
+			pool := p.serverToConnections[addressStr]
 			opts := p.options
 
 			if pool == nil {
@@ -174,42 +204,47 @@ func (p*HankSmartClient) buildNewConnectionCache(
 					//	TODO not totally sure what we should do on errors here.  check original impl.
 					if err != nil {
 						fmt.Println("Error creating host connection", err)
-					}else {
+					} else {
 						host.AddStateChangeListener(connection)
 						hostConnections = append(hostConnections, connection)
 					}
 
 				}
 
-				//	TODO what
-				//pool, err = CreateHostConnectionPool(ctx, hostConnections, -1, preferredHosts)
-
+				pool, err = CreateHostConnectionPool(hostConnections, NO_SEED, preferredHosts)
+				if err != nil {
+					return err
+				}
 			}
-
-			p.serverAddressToConnections[addressStr] = pool
+			p.serverToConnections[addressStr] = pool
 
 		}
+	}
+
+	for domainID, connections := range domainToPartToAddresses {
+
+		partitionToConnections := make(map[iface.PartitionID]*HostConnectionPool)
+
+		for partitionID, addresses := range connections {
+
+			connections := []*HostConnection{}
+			for _, address := range addresses {
+				connections = append(connections, newServerToConnections[address.Print()].GetConnections()...)
+			}
+
+			partitionToConnections[partitionID], err = CreateHostConnectionPool(connections,
+				getHostListShuffleSeed(domainID, partitionID),
+				preferredHosts,
+			)
+		}
+
+		newDomainToPartitionToConnections[domainID] = partitionToConnections
 
 	}
 
-	//TODO
-	//for (Map.Entry<Integer, Map<Integer, List<HostAddress>>> domainToPartitionToAddressesEntry :
-	//newDomainToPartitionToPartitionServerAddressList.entrySet()) {
-	//Integer domainId = domainToPartitionToAddressesEntry.getKey();
-	//Map<Integer, HostConnectionPool> partitionToConnectionPool = new HashMap<Integer, HostConnectionPool>();
-	//for (Map.Entry<Integer, List<HostAddress>> partitionToAddressesEntry :
-	//domainToPartitionToAddressesEntry.getValue().entrySet()) {
-	//List<HostConnection> connections = new ArrayList<HostConnection>();
-	//for (HostAddress address : partitionToAddressesEntry.getValue()) {
-	//connections.addAll(newPartitionServerAddressToConnectionPool.get(address).getConnections());
-	//}
-	//Integer partitionId = partitionToAddressesEntry.getKey();
-	//partitionToConnectionPool.put(partitionId,
-	//HostConnectionPool.createFromList(connections, getHostListShuffleSeed(domainId, partitionId), preferredHosts));
-	//}
-	//newDomainToPartitionToConnectionPool.put(domainId, partitionToConnectionPool);
-	//}
-
-
 	return nil
+}
+
+func getHostListShuffleSeed(domainId iface.DomainID, partitionId iface.PartitionID) int32 {
+	return (int32(domainId) + 1) * (int32(partitionId) + 1)
 }
