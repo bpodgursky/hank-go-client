@@ -124,7 +124,13 @@ func (p *ZkCoordinator) AddDomain(ctx *serializers.ThreadCtx,
 		return nil, err
 	}
 
-	domain, err := createZkDomain(ctx, path.Join(p.domains.Root, domainName), domainName, iface.DomainID(id), numParts, p.client)
+	domain, err := createZkDomain(ctx, path.Join(p.domains.Root, domainName), domainName, iface.DomainID(id), numParts,
+		storageEngineFactoryName,
+		storageEngineOptions,
+		partitionerName,
+		requiredHostFlags,
+		p.client)
+
 	if err != nil {
 		return nil, err
 	}

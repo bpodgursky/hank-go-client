@@ -6,9 +6,8 @@ import (
 	"github.com/bpodgursky/hank-go-client/fixtures"
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/coordinator"
-	"github.com/curator-go/curator"
-	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/hank_types"
+	"github.com/bpodgursky/hank-go-client/iface"
 )
 
 func TestSmartClient(t *testing.T) {
@@ -51,7 +50,6 @@ func TestSmartClient(t *testing.T) {
 	fixtures.TeardownZookeeper(cluster, client)
 }
 
-
 func Val(val string) *hank.HankResponse {
 	resp := &hank.HankResponse{}
 	resp.Value = []byte(val)
@@ -64,7 +62,44 @@ func TestIt(t *testing.T) {
 
 	ctx := serializers.NewThreadCtx()
 
-	server, err := createServer(t, ctx, client, 1, &CountingHandler{internal: &ConstValue{val: Val("1")}})
+	coordinator, _ := coordinator.NewZkCoordinator(client,
+		"/hank/domains",
+		"/hank/ring_groups",
+		"/hank/domain_groups",
+	)
+
+	domain, err := coordinator.AddDomain(ctx, "existent_domain", 2, "", "", "", []string{})
+
+	rg1, err := coordinator.AddRingGroup(ctx, "rg1")
+	ring1, err := rg1.AddRing(ctx, iface.RingID(0))
+
+	host1, err := ring1.AddHost(ctx, "localhost", 12345, []string{})
+	host1Domain, err := host1.AddDomain(ctx, domain)
+	host1Domain.AddPartition(ctx, iface.PartitionID(0))
+
+	host2, err := ring1.AddHost(ctx, "localhost", 12346, []string{})
+	host2Domain, err := host2.AddDomain(ctx, domain)
+	host2Domain.AddPartition(ctx, iface.PartitionID(1))
+
+	dg1, err := coordinator.AddDomainGroup(ctx, "dg1")
+
+	versions := make(map[iface.DomainID]iface.VersionID)
+	versions[domain.GetId()] = iface.VersionID(0)
+	dg1.SetDomainVersions(ctx, versions)
+
+	close1 := createServer(t, ctx, host1, &CountingHandler{internal: &ConstValue{val: Val("1")}})
+	close2 := createServer(t, ctx, host2, &CountingHandler{internal: &ConstValue{val: Val("2")}})
+
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return host1.GetState() == iface.HOST_SERVING && host2.GetState() == iface.HOST_SERVING
+	})
+
+	//	TODO test
+
+	close1()
+	close2()
+
+	fmt.Println(err)
 
 	fixtures.TeardownZookeeper(cluster, client)
 }

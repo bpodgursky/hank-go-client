@@ -7,6 +7,7 @@ import (
   "github.com/bpodgursky/hank-go-client/serializers"
   "github.com/bpodgursky/hank-go-client/iface"
   "github.com/bpodgursky/hank-go-client/hank_types"
+  "strings"
 )
 
 type ZkDomain struct {
@@ -20,11 +21,19 @@ func createZkDomain(ctx *serializers.ThreadCtx,
   name string,
   id iface.DomainID,
   numPartitions int32,
+  storageEngineFactoryName string,
+  storageEngineOptions string,
+  partitionerName string,
+  requiredHostFlags []string,
   client curator.CuratorFramework) (*ZkDomain, error) {
 
   metadata := hank.NewDomainMetadata()
   metadata.ID = int32(id)
   metadata.NumPartitions = numPartitions
+  metadata.StorageEngineFactoryClass = storageEngineFactoryName
+  metadata.StorageEngineOptions = storageEngineOptions
+  metadata.PartitionerClass = partitionerName
+  metadata.RequiredHostFlags = strings.Join(requiredHostFlags, ",")
 
   //  TODO other metadata
 

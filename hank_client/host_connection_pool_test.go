@@ -117,7 +117,7 @@ func setupFailingServerClient(t *testing.T, ctx *serializers.ThreadCtx, client c
 }
 
 func setupServerClient(t *testing.T, server hank.PartitionServer, ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int) (iface.Host, func(), *HostConnection) {
-	host, close := createServer(t, ctx, client, i, server)
+	host, close := createHostServer(t, ctx, client, i, server)
 
 	conn, _ := NewHostConnection(host, 100, 100, 100, 100)
 	fixtures.WaitUntilOrDie(t, func() bool {
