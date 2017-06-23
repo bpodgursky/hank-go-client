@@ -10,6 +10,29 @@ type DataListener interface {
 	OnDataChange(newVal interface{}) error
 }
 
+type DataChangeNotifier interface {
+	OnDataChange()
+}
+
+type MultiNotifier struct {
+	clientListeners []DataChangeNotifier
+}
+
+func NewMultiNotifier() *MultiNotifier {
+	return &MultiNotifier{clientListeners: []DataChangeNotifier{}}
+}
+
+func (p *MultiNotifier) AddClient(notifier DataChangeNotifier){
+	p.clientListeners = append(p.clientListeners, notifier)
+}
+
+func (p *MultiNotifier) OnDataChange() {
+	for _,listener := range p.clientListeners {
+		listener.OnDataChange()
+	}
+}
+
+
 type ThreadCtx struct {
 	serializer   *thrift.TSerializer
 	deserializer *thrift.TDeserializer

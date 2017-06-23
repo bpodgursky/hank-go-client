@@ -48,6 +48,7 @@ type Ring interface {
 	AddHost(ctx *serializers.ThreadCtx, hostName string, port int, hostFlags []string) (Host, error)
 
 	GetHosts(ctx *serializers.ThreadCtx) []Host
+
 }
 
 type RingGroup interface {
@@ -62,6 +63,8 @@ type RingGroup interface {
 	RegisterClient(ctx *serializers.ThreadCtx, metadata *hank.ClientMetadata) error
 
 	GetClients() []*hank.ClientMetadata
+
+	AddListener(listener serializers.DataChangeNotifier)
 
 	//	stub
 }
@@ -99,11 +102,20 @@ type Host interface {
 	//  stub
 }
 
+type Partitioner interface {
+	Partition(key []byte, numPartitions int32) int64
+}
+
 type Domain interface {
 	//  stub
 
 	GetName() string
 	GetId() DomainID
+
+	GetPartitioner() Partitioner
+
+	GetNumParts() int32
+
 }
 
 type HostDomainPartition interface {

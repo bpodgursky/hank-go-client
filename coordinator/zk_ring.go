@@ -21,9 +21,31 @@ type ZkRing struct {
 	coordinator *ZkCoordinator
 
 	hosts *watched_structs.ZkWatchedMap
+
+	listeners []serializers.DataListener
 }
 
-func loadZkRing(ctx *serializers.ThreadCtx, client curator.CuratorFramework, root string) (interface{}, error) {
+
+func loadZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, rootPath string) (interface{}, error) {
+
+	node, err := watched_structs.LoadThriftWatchedNode(client, rootPath, iface.NewHostMetadata)
+	if err != nil {
+		return nil, err
+	}
+
+	assignments, err := watched_structs.LoadThriftWatchedNode(client, assignmentsRoot(rootPath), iface.NewHostAssignmentMetadata)
+	if err != nil {
+		return nil, err
+	}
+
+	state, err := watched_structs.LoadStringWatchedNode(client,
+		path.Join(rootPath, STATE_PATH))
+
+	return &ZkHost{rootPath, node, assignments, state}, nil
+}
+
+
+func loadZkRing(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, root string) (interface{}, error) {
 	matches := RING_REGEX.FindStringSubmatch(path.Base(root))
 
 	//  dumb design and rings are directly in the RG root, but can't change it here
@@ -34,7 +56,7 @@ func loadZkRing(ctx *serializers.ThreadCtx, client curator.CuratorFramework, roo
 			return nil, err
 		}
 
-		hosts, err := watched_structs.NewZkWatchedMap(client, path.Join(root, HOSTS_PATH_SEGMENT), loadZkHost)
+		hosts, err := watched_structs.NewZkWatchedMap(client, path.Join(root, HOSTS_PATH_SEGMENT), listener, loadZkHost)
 		if err != nil {
 			return nil, err
 		}
@@ -47,10 +69,10 @@ func loadZkRing(ctx *serializers.ThreadCtx, client curator.CuratorFramework, roo
 	return nil, nil
 }
 
-func createZkRing(ctx *serializers.ThreadCtx, root string, num iface.RingID, client curator.CuratorFramework) (*ZkRing, error) {
+func createZkRing(ctx *serializers.ThreadCtx, root string, num iface.RingID, listener serializers.DataChangeNotifier,  client curator.CuratorFramework) (*ZkRing, error) {
 	watched_structs.CreateWithParents(client, curator.PERSISTENT, root, nil)
 
-	hosts, err := watched_structs.NewZkWatchedMap(client, path.Join(root, HOSTS_PATH_SEGMENT), loadZkHost)
+	hosts, err := watched_structs.NewZkWatchedMap(client, path.Join(root, HOSTS_PATH_SEGMENT), listener, loadZkHost)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +82,13 @@ func createZkRing(ctx *serializers.ThreadCtx, root string, num iface.RingID, cli
 
 //  public methods
 
+func (p *ZkRing) 	AddStateChangeListener(listener serializers.DataListener) {
+	p.listeners = append(p.listeners, listener)
+}
+
+
 func (p *ZkRing) AddHost(ctx *serializers.ThreadCtx, hostName string, port int, hostFlags []string) (iface.Host, error) {
-	return CreateZkHost(ctx, p.client, path.Join(p.hosts.Root, HOSTS_PATH_SEGMENT), hostName, port, hostFlags)
+	return CreateZkHost(ctx, p.client, p.hosts.Root, hostName, port, hostFlags)
 }
 
 func (p *ZkRing) GetHosts(ctx *serializers.ThreadCtx) []iface.Host {

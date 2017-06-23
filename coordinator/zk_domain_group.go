@@ -42,7 +42,7 @@ func createZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFrame
 	return &ZkDomainGroup{name: name, metadata: node}, nil
 }
 
-func loadZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework, fullPath string) (interface{}, error) {
+func loadZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, fullPath string) (interface{}, error) {
 
 	name := path.Base(fullPath)
 

@@ -20,6 +20,8 @@ type ZkRingGroup struct {
 
 	clients *watched_structs.ZkWatchedMap
 	rings   *watched_structs.ZkWatchedMap
+
+	localNotifier *serializers.MultiNotifier
 }
 
 func createZkRingGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework, name string, rootPath string) (iface.RingGroup, error) {
@@ -32,40 +34,42 @@ func createZkRingGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramewo
 
 	watched_structs.CreateWithParents(client, curator.PERSISTENT, rgRootPath, nil)
 
-	clients, err := watched_structs.NewZkWatchedMap(client, path.Join(rgRootPath, CLIENT_ROOT), loadClientMetadata)
+	listener := serializers.NewMultiNotifier()
+
+	clients, err := watched_structs.NewZkWatchedMap(client, path.Join(rgRootPath, CLIENT_ROOT), listener, loadClientMetadata)
 	if err != nil {
 		return nil, err
 	}
 
-	rings, err := watched_structs.NewZkWatchedMap(client, rgRootPath, loadZkRing)
+	rings, err := watched_structs.NewZkWatchedMap(client, rgRootPath, listener, loadZkRing)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ZkRingGroup{ringGroupPath: rootPath, name: name, client: client, clients: clients, rings: rings}, nil
+	return &ZkRingGroup{ringGroupPath: rootPath, name: name, client: client, clients: clients, rings: rings, localNotifier: listener}, nil
 
 }
 
-func loadZkRingGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework, rgRootPath string) (interface{}, error) {
+func loadZkRingGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, rgRootPath string) (interface{}, error) {
 
 	err := watched_structs.AssertExists(client, rgRootPath)
 	if err != nil {
 		return nil, err
 	}
 
-	clients, err := watched_structs.NewZkWatchedMap(client, path.Join(rgRootPath, CLIENT_ROOT), loadClientMetadata)
+	clients, err := watched_structs.NewZkWatchedMap(client, path.Join(rgRootPath, CLIENT_ROOT), listener, loadClientMetadata)
 	if err != nil {
 		return nil, err
 	}
 
-	rings, err := watched_structs.NewZkWatchedMap(client, rgRootPath, loadZkRing)
+	rings, err := watched_structs.NewZkWatchedMap(client, rgRootPath, listener, loadZkRing)
 
 	return &ZkRingGroup{ringGroupPath: rgRootPath, client: client, clients: clients, rings: rings}, nil
 }
 
 //  loader
 
-func loadClientMetadata(ctx *serializers.ThreadCtx, client curator.CuratorFramework, path string) (interface{}, error) {
+func loadClientMetadata(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, path string) (interface{}, error) {
 	metadata := hank.NewClientMetadata()
 	watched_structs.LoadThrift(ctx, path, client, metadata)
 	return metadata, nil
@@ -79,6 +83,10 @@ func (p *ZkRingGroup) RegisterClient(ctx *serializers.ThreadCtx, metadata *hank.
 
 func (p *ZkRingGroup) GetName() string {
 	return p.name
+}
+
+func (p *ZkRingGroup) AddListener(listener serializers.DataChangeNotifier) {
+	p.localNotifier.AddClient(listener)
 }
 
 func (p *ZkRingGroup) GetClients() []*hank.ClientMetadata {
@@ -100,7 +108,7 @@ func (p *ZkRingGroup) AddRing(ctx *serializers.ThreadCtx, ringNum iface.RingID) 
 	ringChild := ringName(ringNum)
 	ringRoot := path.Join(p.rings.Root, ringChild)
 
-	ring, err := createZkRing(ctx, ringRoot, ringNum, p.client)
+	ring, err := createZkRing(ctx, ringRoot, ringNum, p.localNotifier, p.client)
 	if err != nil {
 		return nil, err
 	}

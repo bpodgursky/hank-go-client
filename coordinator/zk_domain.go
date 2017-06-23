@@ -14,6 +14,9 @@ type ZkDomain struct {
   name string
 
   metadata *watched_structs.ZkWatchedNode
+
+  //  temp
+  partitioner iface.Partitioner
 }
 
 func createZkDomain(ctx *serializers.ThreadCtx,
@@ -53,7 +56,24 @@ func createZkDomain(ctx *serializers.ThreadCtx,
 
 }
 
-func loadZkDomain(ctx *serializers.ThreadCtx, client curator.CuratorFramework, root string) (interface{}, error) {
+
+func (p *ZkDomain) GetPartitioner() iface.Partitioner{
+
+  if p.partitioner == nil {
+    class := iface.AsDomainMetadata(p.metadata.Get()).PartitionerClass
+
+    //  gross, but otherwise there's no good way to get java classes to line up with Go impls
+    if class == "com.liveramp.hank.partitioner.Murmur64Partitioner" {
+      p.partitioner = &Murmur64Partitioner{}
+    }
+
+  }
+
+  return p.partitioner
+}
+
+
+func loadZkDomain(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, root string) (interface{}, error) {
   name := path.Base(root)
 
   if path.Base(root) != KEY_DOMAIN_ID_COUNTER {
@@ -77,4 +97,8 @@ func (p *ZkDomain) GetName() string {
 
 func (p *ZkDomain) GetId() iface.DomainID {
   return iface.DomainID(iface.AsDomainMetadata(p.metadata.Get()).ID)
+}
+
+func (p *ZkDomain) GetNumParts() int32{
+  return iface.AsDomainMetadata(p.metadata.Get()).NumPartitions
 }

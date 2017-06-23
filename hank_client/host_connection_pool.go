@@ -139,7 +139,7 @@ func buildConnections(connectionsByHost map[string][]*HostConnection, hostIndex 
 
 }
 
-func (p *HostConnectionPool) getConnectionFromPools(pools *ConnectionSet, keyHash int32, connection *IndexedHostConnection) (*IndexedHostConnection, bool) {
+func (p *HostConnectionPool) getConnectionFromPools(pools *ConnectionSet, keyHash int64, connection *IndexedHostConnection) (*IndexedHostConnection, bool) {
 
 	var conn *IndexedHostConnection
 	var locked bool
@@ -161,8 +161,8 @@ func (p *HostConnectionPool) getConnectionFromPools(pools *ConnectionSet, keyHas
 
 }
 
-func (p *HostConnectionPool) getConnectionToUseForKey(pool *ConnectionSet, keyHash int32) (*IndexedHostConnection, bool) {
-	return p.getNextConnectionToUse(keyHash%int32(len(pool.connections)), pool.connections)
+func (p *HostConnectionPool) getConnectionToUseForKey(pool *ConnectionSet, keyHash int64) (*IndexedHostConnection, bool) {
+	return p.getNextConnectionToUse(int32(keyHash%int64(len(pool.connections))), pool.connections)
 }
 
 func (p *HostConnectionPool) getNextHostIndexToUse(previouslyUsedHostIndex int32, connections [][]*IndexedHostConnection) int32 {
@@ -326,7 +326,7 @@ func (p *HostConnectionPool) attemptQuery(connection *IndexedHostConnection, isL
 	}
 }
 
-func (p *HostConnectionPool) Get(domain iface.Domain, key []byte, maxNumTries int32, keyHash int32) *hank.HankResponse {
+func (p *HostConnectionPool) Get(domain iface.Domain, key []byte, maxNumTries int32, keyHash int64) *hank.HankResponse {
 
 	var indexedConnection *IndexedHostConnection
 	var locked bool

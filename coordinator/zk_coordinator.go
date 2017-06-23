@@ -24,9 +24,9 @@ func NewZkCoordinator(client curator.CuratorFramework,
 	ringGroupsRoot string,
 	domainGroupsRoot string) (*ZkCoordinator, error) {
 
-	ringGroups, rgError := watched_structs.NewZkWatchedMap(client, ringGroupsRoot, loadZkRingGroup)
-	domainGroups, dgError := watched_structs.NewZkWatchedMap(client, domainGroupsRoot, loadZkDomainGroup)
-	domains, dmError := watched_structs.NewZkWatchedMap(client, domainsRoot, loadZkDomain)
+	ringGroups, rgError := watched_structs.NewZkWatchedMap(client, ringGroupsRoot, serializers.NewMultiNotifier(), loadZkRingGroup)
+	domainGroups, dgError := watched_structs.NewZkWatchedMap(client, domainGroupsRoot, serializers.NewMultiNotifier(), loadZkDomainGroup)
+	domains, dmError := watched_structs.NewZkWatchedMap(client, domainsRoot, serializers.NewMultiNotifier(), loadZkDomain)
 
 	if rgError != nil {
 		return nil, rgError

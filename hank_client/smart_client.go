@@ -10,7 +10,34 @@ import (
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"sync"
+	"github.com/hashicorp/golang-lru"
+	"math"
 )
+
+type RequestCounters struct {
+	requests  int64
+	cacheHits int64
+
+	lock *sync.Mutex
+}
+
+func NewRequestCounters() (*RequestCounters) {
+	return &RequestCounters{
+		0,
+		0,
+		&sync.Mutex{},
+	}
+}
+
+func (p *RequestCounters) increment(requests int64, cacheHits int64) {
+	p.lock.Lock()
+
+	p.requests++
+	p.cacheHits++
+
+	p.lock.Unlock()
+
+}
 
 type HankSmartClient struct {
 	coordinator iface.Coordinator
@@ -22,6 +49,10 @@ type HankSmartClient struct {
 	serverToConnections       map[string]*HostConnectionPool
 	domainToPartToConnections map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool
 	connectionLock            *sync.Mutex
+
+	cache    *lru.Cache
+	counters *RequestCounters
+
 }
 
 func NewHankSmartClient(
@@ -44,14 +75,64 @@ func NewHankSmartClient(
 		return nil, registerErr
 	}
 
-	return &HankSmartClient{coordinator,
-													ringGroup,
-													options,
-													make(map[string]*iface.PartitionServerAddress),
-													make(map[string]*HostConnectionPool),
-													make(map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool),
-													&sync.Mutex{},
-	}, nil
+	var cache *lru.Cache
+
+	if options.ResponseCacheEnabled {
+		cache, err = lru.New(int(options.ResponseCacheNumItems))
+	}
+
+	client := &HankSmartClient{coordinator,
+														 ringGroup,
+														 options,
+														 make(map[string]*iface.PartitionServerAddress),
+														 make(map[string]*HostConnectionPool),
+														 make(map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool),
+														 &sync.Mutex{},
+														 cache,
+														 NewRequestCounters(),
+	}
+
+	client.updateConnectionCache(ctx)
+
+	ringGroup.AddListener(client)
+
+	return client, nil
+}
+
+func (p *HankSmartClient) OnDataChange() {
+
+
+	//	TODO implement
+
+
+
+	//sdfa
+
+}
+
+func (p *HankSmartClient) updateLoop(stopping *bool, listenerLock *SingleLockSemaphore) {
+
+	ctx := serializers.NewThreadCtx()
+
+	for !(*stopping) {
+	 //p.listenerLock.Read()
+		p.updateConnectionCache(ctx)
+	}
+
+}
+
+func (p *HankSmartClient) Stop() {
+
+	for _, value := range p.domainToPartToConnections {
+		for _, connections := range value {
+			for _, conns := range connections.otherPools.connections {
+				for _, conn := range conns {
+					conn.connection.Disconnect()
+				}
+			}
+		}
+	}
+
 }
 
 func GetClientMetadata() (*hank.ClientMetadata, error) {
@@ -88,7 +169,6 @@ func (p *HankSmartClient) updateConnectionCache(ctx *serializers.ThreadCtx) {
 	p.connectionLock.Unlock()
 
 	for address, pool := range oldServerToConnections {
-
 		if _, ok := p.serverToConnections[address]; !ok {
 			for _, conn := range pool.GetConnections() {
 				conn.Disconnect()
@@ -98,7 +178,105 @@ func (p *HankSmartClient) updateConnectionCache(ctx *serializers.ThreadCtx) {
 
 }
 
-func (p*HankSmartClient) isPreferredHost(ctx *serializers.ThreadCtx, host iface.Host) bool {
+func noSuchDomain() *hank.HankResponse {
+	resp := hank.NewHankResponse()
+	exception := hank.NewHankException()
+	exception.NoSuchDomain = newTrue()
+	resp.Xception = exception
+	return resp
+}
+
+func noReplica() *hank.HankResponse {
+	resp := hank.NewHankResponse()
+	exception := hank.NewHankException()
+	exception.NoReplica = newTrue()
+	resp.Xception = exception
+	return resp
+}
+
+func (p *HankSmartClient) Get(domainName string, key []byte) (*hank.HankResponse, error) {
+
+	domain := p.coordinator.GetDomain(domainName)
+
+	if domain == nil {
+		fmt.Printf("No domain found: %v\n", domainName)
+		return noSuchDomain(), nil
+	}
+
+	return p.get(domain, key)
+}
+
+type Entry struct {
+	domain iface.DomainID
+	key    []byte
+}
+
+func (p *HankSmartClient) get(domain iface.Domain, key []byte) (*hank.HankResponse, error) {
+
+	if key == nil {
+		return nil, errors.New("Null key")
+	}
+
+	if len(key) == 0 {
+		return nil, errors.New("Empty key")
+	}
+
+	domainID := domain.GetId()
+	entry := Entry{domainID, key}
+
+	var val interface{}
+	var ok bool
+
+	if p.cache != nil {
+		val, ok = p.cache.Get(entry)
+	}
+
+	if ok {
+		p.counters.increment(1, 1)
+		return val.(*hank.HankResponse), nil
+	} else {
+		p.counters.increment(1, 0)
+
+		// Determine HostConnectionPool to use
+		partitioner := domain.GetPartitioner()
+		partition := partitioner.Partition(key, domain.GetNumParts())
+		keyHash := partitioner.Partition(key, math.MaxInt32)
+
+		p.connectionLock.Lock()
+		pools := p.domainToPartToConnections[domainID]
+		p.connectionLock.Unlock()
+
+		fmt.Println(p.domainToPartToConnections)
+
+		if pools == nil {
+			fmt.Printf("Could not find domain to partition map for domain %v (id: %v)]\n", domain.GetName(), domainID)
+			return noReplica(), nil
+		}
+
+		pool := pools[iface.PartitionID(partition)]
+
+		if pool == nil {
+			fmt.Printf("Could not find list of hosts for domain %v, partition %v\n", domain.GetName(), partition)
+			return noReplica(), nil
+		}
+
+		response := pool.Get(domain, key, p.options.QueryMaxNumTries, keyHash)
+
+		if p.cache != nil && response != nil && (response.IsSetNotFound() || response.IsSetValue()) {
+			p.cache.Add(key, response)
+		}
+
+		if response.IsSetXception() {
+			fmt.Printf("Failed to perform get: domain: %v partition; %v key; %v", domain, partition, key)
+		}
+
+		return response, nil
+
+	}
+
+}
+
+func (p *HankSmartClient) isPreferredHost(ctx *serializers.ThreadCtx, host iface.Host) bool {
 
 	fmt.Println("Environment flags for host ", host)
 
@@ -116,7 +294,7 @@ func (p*HankSmartClient) isPreferredHost(ctx *serializers.ThreadCtx, host iface.
 	return false
 }
 
-func (p*HankSmartClient) buildNewConnectionCache(
+func (p *HankSmartClient) buildNewConnectionCache(
 	ctx *serializers.ThreadCtx,
 	newServerToConnections map[string]*HostConnectionPool,
 	newDomainToPartitionToConnections map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool) error {
@@ -157,7 +335,8 @@ func (p*HankSmartClient) buildNewConnectionCache(
 				partitionToAddresses := domainToPartToAddresses[domainId]
 
 				if partitionToAddresses == nil {
-					domainToPartToAddresses[domainId] = make(map[iface.PartitionID][]*iface.PartitionServerAddress)
+					partitionToAddresses = make(map[iface.PartitionID][]*iface.PartitionServerAddress)
+					domainToPartToAddresses[domainId] = partitionToAddresses
 				}
 
 				fmt.Println(address)
@@ -181,6 +360,8 @@ func (p*HankSmartClient) buildNewConnectionCache(
 			addressStr := address.Print()
 			pool := p.serverToConnections[addressStr]
 			opts := p.options
+
+			fmt.Println(opts)
 
 			if pool == nil {
 
@@ -216,8 +397,7 @@ func (p*HankSmartClient) buildNewConnectionCache(
 					return err
 				}
 			}
-			p.serverToConnections[addressStr] = pool
-
+			newServerToConnections[addressStr] = pool
 		}
 	}
 

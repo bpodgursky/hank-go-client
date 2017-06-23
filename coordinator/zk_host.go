@@ -8,6 +8,10 @@ import (
 	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/hank_types"
+	"fmt"
+	"github.com/satori/go.uuid"
+	"math/big"
+	"strconv"
 )
 
 const ASSIGNMENTS_PATH string = "a"
@@ -21,7 +25,14 @@ type ZkHost struct {
 	state              *watched_structs.ZkWatchedNode
 }
 
-func CreateZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, rootPath string, hostName string, port int, flags []string) (iface.Host, error) {
+func CreateZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, basePath string, hostName string, port int, flags []string) (iface.Host, error) {
+
+	uuid := uuid.NewV4().Bytes()
+	last := uuid[len(uuid)-8:]
+
+	var number big.Int
+	number.SetBytes(last)
+	rootPath := path.Join(basePath, strconv.FormatInt(number.Int64(), 10))
 
 	metadata := hank.NewHostMetadata()
 	metadata.HostName = hostName
@@ -30,26 +41,35 @@ func CreateZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, r
 
 	node, err := watched_structs.NewThriftWatchedNode(client, curator.PERSISTENT, rootPath, ctx, iface.NewHostMetadata, metadata)
 	if err != nil {
+		fmt.Println("Error creating host node at path: ", rootPath, err)
 		return nil, err
 	}
 
 	assignmentMetadata := hank.NewHostAssignmentsMetadata()
 	assignmentMetadata.Domains = make(map[int32]*hank.HostDomainMetadata)
 
+	assignmentsRoot := assignmentsRoot(rootPath)
 	partitionAssignments, err := watched_structs.NewThriftWatchedNode(client,
 		curator.PERSISTENT,
-		assignmentsRoot(rootPath),
+		assignmentsRoot,
 		ctx,
 		iface.NewHostAssignmentMetadata,
 		assignmentMetadata)
 	if err != nil {
+		fmt.Println("Error creating assignments node at path: ", assignmentsRoot, err)
 		return nil, err
 	}
 
+	statePath := path.Join(rootPath, STATE_PATH)
 	state, err := watched_structs.NewStringWatchedNode(client,
 		curator.EPHEMERAL,
-		path.Join(rootPath, STATE_PATH),
+		statePath,
 		string(iface.HOST_OFFLINE))
+
+	if err != nil {
+		fmt.Println("Error creating state node at path: ", statePath, err)
+		return nil, err
+	}
 
 	return &ZkHost{rootPath, node, partitionAssignments, state}, nil
 }
@@ -57,23 +77,6 @@ func assignmentsRoot(rootPath string) string {
 	return path.Join(rootPath, ASSIGNMENTS_PATH)
 }
 
-func loadZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, rootPath string) (interface{}, error) {
-
-	node, err := watched_structs.LoadThriftWatchedNode(client, rootPath, iface.NewHostMetadata)
-	if err != nil {
-		return nil, err
-	}
-
-	assignments, err := watched_structs.LoadThriftWatchedNode(client, assignmentsRoot(rootPath), iface.NewHostAssignmentMetadata)
-	if err != nil {
-		return nil, err
-	}
-
-	state, err := watched_structs.LoadStringWatchedNode(client,
-		path.Join(rootPath, STATE_PATH))
-
-	return &ZkHost{rootPath, node, assignments, state}, nil
-}
 
 func (p *ZkHost) addPartition(ctx *serializers.ThreadCtx, domainId iface.DomainID, partNum iface.PartitionID) iface.HostDomainPartition {
 

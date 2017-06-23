@@ -34,3 +34,7 @@ import:
 - package: google.golang.org/api
   subpackages:
   - compute/v1
+- package: github.com/hashicorp/golang-lru
+- package: github.com/aviddiviner/go-murmur
+- package: github.com/satori/go.uuid
+  version: ~1.1.0

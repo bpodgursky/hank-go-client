@@ -44,7 +44,7 @@ func main() {
 	}
 
 	domain := coordinator.GetDomain(argsWithoutProg[1])
-	domainId := domain.GetId(ctx)
+	domainId := domain.GetId()
 
 	fmt.Println("Using domain: ", domain.GetName())
 

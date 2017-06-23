@@ -27,8 +27,7 @@ func main() {
 	}
 
 	options := hank_client.NewHankSmartClientOptions().
-		SetNumConnectionsPerHost(2).
-		Build()
+		SetNumConnectionsPerHost(2)
 
 	smartClient, clientErr := hank_client.NewHankSmartClient(coordinator, "spruce-aws", options)
 	if clientErr != nil {

@@ -13,6 +13,10 @@ type hankSmartClientOptions struct {
 	QueryTimeoutMs               int32
 	BulkQueryTimeoutMs           int32
 	PreferredHostEnvironment     *EnvironmentValue
+	QueryMaxNumTries             int32
+
+	ResponseCacheEnabled  bool
+	ResponseCacheNumItems int32
 }
 
 func NewHankSmartClientOptions() *hankSmartClientOptions {
@@ -50,13 +54,22 @@ func (p *hankSmartClientOptions) SetBulkQueryTimeoutMs(timeout int32) *hankSmart
 	return p
 }
 
-func (p *hankSmartClientOptions) Build() *hankSmartClientOptions {
-	build := &hankSmartClientOptions{}
-
-	return build
+func (p *hankSmartClientOptions) SetResponseCacheEnabled(enabled bool) *hankSmartClientOptions {
+	p.ResponseCacheEnabled = enabled
+	return p
 }
 
-func (p *hankSmartClientOptions) SetPreferredEnvironment(env *EnvironmentValue) *hankSmartClientOptions{
+func (p *hankSmartClientOptions) SetResponseCacheNumItems(items int32) *hankSmartClientOptions {
+	p.ResponseCacheNumItems = items
+	return p
+}
+
+func (p *hankSmartClientOptions) SetQueryMaxNumTries(tries int32) *hankSmartClientOptions {
+	p.QueryMaxNumTries = tries
+	return p
+}
+
+func (p *hankSmartClientOptions) SetPreferredEnvironment(env *EnvironmentValue) *hankSmartClientOptions {
 	p.PreferredHostEnvironment = env
 	return p
 }
