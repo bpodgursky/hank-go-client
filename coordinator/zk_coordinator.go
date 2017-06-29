@@ -95,7 +95,13 @@ func (p *ZkCoordinator) AddDomainGroup(ctx *serializers.ThreadCtx, name string) 
 		return nil, err
 	}
 
-	p.domainGroups.Put(name, group)
+	err = watched_structs.WaitUntilOrDie(func() bool {
+		return p.domainGroups.Contains(name)
+	})
+	if err != nil{
+		return nil, err
+	}
+
 	return group, nil
 
 }
@@ -106,6 +112,15 @@ func (p *ZkCoordinator) AddRingGroup(ctx *serializers.ThreadCtx, name string) (i
 	if err != nil {
 		return nil, err
 	}
+
+	err = watched_structs.WaitUntilOrDie(func() bool {
+		return p.ringGroups.Contains(name)
+	})
+	if err != nil{
+		return nil, err
+	}
+
+	//	TODO clean up
 	p.ringGroups.Put(name, group)
 
 	return group, nil
@@ -134,7 +149,13 @@ func (p *ZkCoordinator) AddDomain(ctx *serializers.ThreadCtx,
 	if err != nil {
 		return nil, err
 	}
-	p.domains.Put(domainName, domain)
+
+	err = watched_structs.WaitUntilOrDie(func() bool {
+		return p.domains.Contains(domainName)
+	})
+	if err != nil{
+		return nil, err
+	}
 
 	return domain, nil
 }

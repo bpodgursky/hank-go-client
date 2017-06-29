@@ -1,10 +1,10 @@
 package watched_structs
 
 import (
+	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/curator-go/curator"
 	"github.com/curator-go/curator/recipes/cache"
 	"path"
-	"github.com/bpodgursky/hank-go-client/serializers"
 )
 
 type Loader func(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, path string) (interface{}, error)
@@ -16,7 +16,7 @@ type ZkWatchedMap struct {
 	client       curator.CuratorFramework
 	loader       Loader
 	internalData map[string]interface{}
-	listener    []serializers.DataChangeNotifier
+	listener     []serializers.DataChangeNotifier
 }
 
 type ChildLoader struct {
@@ -37,7 +37,7 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 		fullChildPath := event.Data.Path()
 		if IsSubdirectory(p.root, fullChildPath) {
 			err := conditionalInsert(p.ctx, client, p.loader, p.listener, p.internalData, fullChildPath)
-			p.listener.OnDataChange()
+			p.listener.OnChange()
 			if err != nil {
 				return err
 			}
@@ -45,20 +45,26 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 	case cache.TreeCacheEventNodeRemoved:
 		fullChildPath := event.Data.Path()
 		delete(p.internalData, path.Base(fullChildPath))
-		p.listener.OnDataChange()
+		p.listener.OnChange()
 	}
 
 	return nil
 }
 func conditionalInsert(ctx *serializers.ThreadCtx, client curator.CuratorFramework, loader Loader, listener serializers.DataChangeNotifier, internalData map[string]interface{}, fullChildPath string) error {
-	item, err := loader(ctx, client, listener, fullChildPath)
 
-	if err != nil {
-		return err
-	}
+	newKey := path.Base(fullChildPath)
 
-	if item != nil {
-		internalData[path.Base(fullChildPath)] = item
+	if _, ok := internalData[newKey]; !ok {
+
+		item, err := loader(ctx, client, listener, fullChildPath)
+		if err != nil {
+			return err
+		}
+
+		if item != nil {
+			internalData[newKey] = item
+		}
+
 	}
 
 	return nil
@@ -121,6 +127,11 @@ func (p *ZkWatchedMap) Get(key string) interface{} {
 }
 
 //  TODO these methods are inefficient;  is there an equivalent to ImmutableMap?
+
+func (p *ZkWatchedMap) Contains(key string) bool{
+	_, ok := p.internalData[key]
+	return ok
+}
 
 func (p *ZkWatchedMap) KeySet() []string {
 

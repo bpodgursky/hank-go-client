@@ -23,9 +23,11 @@ type ZkHost struct {
 	metadata           *watched_structs.ZkWatchedNode
 	assignedPartitions *watched_structs.ZkWatchedNode
 	state              *watched_structs.ZkWatchedNode
+
+	listener serializers.DataChangeNotifier
 }
 
-func CreateZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, basePath string, hostName string, port int, flags []string) (iface.Host, error) {
+func CreateZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, basePath string, hostName string, port int, flags []string) (iface.Host, error) {
 
 	uuid := uuid.NewV4().Bytes()
 	last := uuid[len(uuid)-8:]
@@ -44,6 +46,9 @@ func CreateZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, b
 		fmt.Println("Error creating host node at path: ", rootPath, err)
 		return nil, err
 	}
+
+	adapter := &serializers.Adapter{Notifier: listener}
+	node.AddListener(adapter)
 
 	assignmentMetadata := hank.NewHostAssignmentsMetadata()
 	assignmentMetadata.Domains = make(map[int32]*hank.HostDomainMetadata)
@@ -65,14 +70,40 @@ func CreateZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, b
 		curator.EPHEMERAL,
 		statePath,
 		string(iface.HOST_OFFLINE))
+	state.AddListener(adapter)
+
 
 	if err != nil {
 		fmt.Println("Error creating state node at path: ", statePath, err)
 		return nil, err
 	}
 
-	return &ZkHost{rootPath, node, partitionAssignments, state}, nil
+	return &ZkHost{rootPath, node, partitionAssignments, state, listener}, nil
 }
+
+func loadZkHost(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, rootPath string) (interface{}, error) {
+
+	node, err := watched_structs.LoadThriftWatchedNode(client, rootPath, iface.NewHostMetadata)
+	if err != nil {
+		return nil, err
+	}
+
+	adapter := &serializers.Adapter{Notifier: listener}
+	node.AddListener(adapter)
+
+	assignments, err := watched_structs.LoadThriftWatchedNode(client, assignmentsRoot(rootPath), iface.NewHostAssignmentMetadata)
+	if err != nil {
+		return nil, err
+	}
+	assignments.AddListener(adapter)
+
+	state, err := watched_structs.LoadStringWatchedNode(client,
+		path.Join(rootPath, STATE_PATH))
+
+	return &ZkHost{rootPath, node, assignments, state, listener}, nil
+}
+
+
 func assignmentsRoot(rootPath string) string {
 	return path.Join(rootPath, ASSIGNMENTS_PATH)
 }
@@ -161,6 +192,10 @@ func (p *ZkHost) getPartitions(domainId iface.DomainID) []iface.HostDomainPartit
 
 //  public
 
+func (p  *ZkHost) GetID() string {
+	return path.Base(p.path)
+}
+
 func (p *ZkHost) AddStateChangeListener(listener serializers.DataListener) {
 	p.state.AddListener(listener)
 }
@@ -215,6 +250,8 @@ func (p *ZkHost) AddDomain(ctx *serializers.ThreadCtx, domain iface.Domain) (ifa
 	if err != nil {
 		return nil, err
 	}
+
+	p.listener.OnChange()
 
 	return newZkHostDomain(p, domainId), nil
 }

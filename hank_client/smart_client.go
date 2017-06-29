@@ -1,17 +1,17 @@
 package hank_client
 
 import (
-	"os"
-	"time"
-	"fmt"
 	"errors"
-	"strconv"
+	"fmt"
+	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/hank_types"
-	"sync"
 	"github.com/hashicorp/golang-lru"
 	"math"
+	"os"
+	"strconv"
+	"sync"
+	"time"
 )
 
 type RequestCounters struct {
@@ -21,7 +21,7 @@ type RequestCounters struct {
 	lock *sync.Mutex
 }
 
-func NewRequestCounters() (*RequestCounters) {
+func NewRequestCounters() *RequestCounters {
 	return &RequestCounters{
 		0,
 		0,
@@ -53,6 +53,7 @@ type HankSmartClient struct {
 	cache    *lru.Cache
 	counters *RequestCounters
 
+	cacheUpdateLock *SingleLockSemaphore
 }
 
 func NewHankSmartClient(
@@ -81,41 +82,45 @@ func NewHankSmartClient(
 		cache, err = lru.New(int(options.ResponseCacheNumItems))
 	}
 
+	connectionCacheLock := NewSingleLockSemaphore()
+
 	client := &HankSmartClient{coordinator,
-														 ringGroup,
-														 options,
-														 make(map[string]*iface.PartitionServerAddress),
-														 make(map[string]*HostConnectionPool),
-														 make(map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool),
-														 &sync.Mutex{},
-														 cache,
-														 NewRequestCounters(),
+		ringGroup,
+		options,
+		make(map[string]*iface.PartitionServerAddress),
+		make(map[string]*HostConnectionPool),
+		make(map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool),
+		&sync.Mutex{},
+		cache,
+		NewRequestCounters(),
+		connectionCacheLock,
 	}
 
 	client.updateConnectionCache(ctx)
+
+	stopping := false
+	go client.updateLoop(&stopping, connectionCacheLock)
 
 	ringGroup.AddListener(client)
 
 	return client, nil
 }
 
-func (p *HankSmartClient) OnDataChange() {
-
-
-	//	TODO implement
-
-
-
-	//sdfa
-
+func (p *HankSmartClient) OnChange() {
+	p.cacheUpdateLock.Release()
 }
 
 func (p *HankSmartClient) updateLoop(stopping *bool, listenerLock *SingleLockSemaphore) {
 
 	ctx := serializers.NewThreadCtx()
 
-	for !(*stopping) {
-	 //p.listenerLock.Read()
+	for true {
+		listenerLock.Read()
+
+		if *stopping {
+			break
+		}
+
 		p.updateConnectionCache(ctx)
 	}
 
@@ -246,8 +251,6 @@ func (p *HankSmartClient) get(domain iface.Domain, key []byte) (*hank.HankRespon
 		pools := p.domainToPartToConnections[domainID]
 		p.connectionLock.Unlock()
 
-		fmt.Println(p.domainToPartToConnections)
-
 		if pools == nil {
 			fmt.Printf("Could not find domain to partition map for domain %v (id: %v)]\n", domain.GetName(), domainID)
 			return noReplica(), nil
@@ -339,8 +342,6 @@ func (p *HankSmartClient) buildNewConnectionCache(
 					domainToPartToAddresses[domainId] = partitionToAddresses
 				}
 
-				fmt.Println(address)
-
 				for _, partition := range hostDomain.GetPartitions() {
 
 					if !partition.IsDeletable() {
@@ -360,8 +361,6 @@ func (p *HankSmartClient) buildNewConnectionCache(
 			addressStr := address.Print()
 			pool := p.serverToConnections[addressStr]
 			opts := p.options
-
-			fmt.Println(opts)
 
 			if pool == nil {
 

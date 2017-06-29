@@ -19,9 +19,6 @@ func NewPartitionServerHandler(mockData map[string]string) *MapPartitionServerHa
 func (p *MapPartitionServerHandler) Get(domain_id int32, key []byte) (r *hank.HankResponse, err error) {
 	var response = hank.NewHankResponse()
 
-	fmt.Println("Request for ", key)
-	fmt.Println("Data ", p.mockData)
-
 	response.Value = []byte(p.mockData[string(key)])
 	response.NotFound = newFalse()
 	response.Xception = nil
@@ -71,10 +68,7 @@ func Serve(
 
 	return server, func() {
 		transport.Close()
-		fmt.Println("closed transport")
 		server.Stop()
-		fmt.Println("stopped serfver")
 		wg.Wait()
-		fmt.Println("waited")
 	}
 }

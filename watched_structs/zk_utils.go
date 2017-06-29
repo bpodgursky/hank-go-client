@@ -7,7 +7,34 @@ import (
 	"path"
 	"path/filepath"
 	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/cenkalti/backoff"
+	"time"
+	"fmt"
 )
+
+
+func WaitUntilOrDie(expectTrue func() bool) error {
+
+	backoffStrat := backoff.NewExponentialBackOff()
+	backoffStrat.MaxElapsedTime = time.Second * 10
+
+	err := backoff.Retry(func() error {
+		val := expectTrue()
+
+		if !val {
+			return errors.New("failed to evaluate true")
+		}
+
+		return nil
+
+	}, backoffStrat)
+
+	if err == nil {
+		fmt.Println("Assertion success!")
+	}
+
+	return err
+}
 
 func AssertEmpty(client curator.CuratorFramework, fullPath string) error {
 	exists, _ := client.CheckExists().ForPath(fullPath)

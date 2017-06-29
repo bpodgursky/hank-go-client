@@ -1,8 +1,8 @@
 package serializers
 
 import (
-	"git.apache.org/thrift.git/lib/go/thrift"
 	"sync"
+	"git.apache.org/thrift.git/lib/go/thrift"
 )
 
 //	TODO probably not the right package name
@@ -11,7 +11,21 @@ type DataListener interface {
 }
 
 type DataChangeNotifier interface {
-	OnDataChange()
+	OnChange()
+}
+
+type NoOp struct{}
+
+func (t *NoOp) OnDataChange(newVal interface{}) error { return nil }
+func (t *NoOp) OnChange()                             {}
+
+type Adapter struct {
+	Notifier DataChangeNotifier
+}
+
+func (t *Adapter) OnDataChange(newVal interface{}) error {
+	t.Notifier.OnChange()
+	return nil
 }
 
 type MultiNotifier struct {
@@ -22,16 +36,15 @@ func NewMultiNotifier() *MultiNotifier {
 	return &MultiNotifier{clientListeners: []DataChangeNotifier{}}
 }
 
-func (p *MultiNotifier) AddClient(notifier DataChangeNotifier){
+func (p *MultiNotifier) AddClient(notifier DataChangeNotifier) {
 	p.clientListeners = append(p.clientListeners, notifier)
 }
 
-func (p *MultiNotifier) OnDataChange() {
-	for _,listener := range p.clientListeners {
-		listener.OnDataChange()
+func (p *MultiNotifier) OnChange() {
+	for _, listener := range p.clientListeners {
+		listener.OnChange()
 	}
 }
-
 
 type ThreadCtx struct {
 	serializer   *thrift.TSerializer
@@ -108,5 +121,3 @@ func (p *ThreadCtx) ToBytes(tStruct thrift.TStruct) ([]byte, error) {
 
 	return bytes, nil
 }
-
-

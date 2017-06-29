@@ -62,9 +62,12 @@ func loadZkRingGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework
 		return nil, err
 	}
 
-	rings, err := watched_structs.NewZkWatchedMap(client, rgRootPath, listener, loadZkRing)
+	multiListener := serializers.NewMultiNotifier()
+	multiListener.AddClient(listener)
 
-	return &ZkRingGroup{ringGroupPath: rgRootPath, client: client, clients: clients, rings: rings}, nil
+	rings, err := watched_structs.NewZkWatchedMap(client, rgRootPath, multiListener, loadZkRing)
+
+	return &ZkRingGroup{ringGroupPath: rgRootPath, client: client, clients: clients, rings: rings, localNotifier: multiListener}, nil
 }
 
 //  loader
@@ -113,7 +116,13 @@ func (p *ZkRingGroup) AddRing(ctx *serializers.ThreadCtx, ringNum iface.RingID) 
 		return nil, err
 	}
 
-	p.rings.Put(ringChild, ring)
+	err = watched_structs.WaitUntilOrDie(func() bool {
+		return p.rings.Contains(ringChild)
+	})
+	if err != nil{
+		return nil, err
+	}
+
 	return ring, nil
 }
 

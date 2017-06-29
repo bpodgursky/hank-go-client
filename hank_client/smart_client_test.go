@@ -88,14 +88,14 @@ func TestIt(t *testing.T) {
 	rg1, err := coord.AddRingGroup(ctx, "rg1")
 	ring1, err := rg1.AddRing(ctx, iface.RingID(0))
 
-	host1, err := ring1.AddHost(ctx, "localhost", 12345, []string{})
-	host1Domain, err := host1.AddDomain(ctx, domain)
+	host0, err := ring1.AddHost(ctx, "localhost", 12345, []string{})
+	host1Domain, err := host0.AddDomain(ctx, domain)
 	host1Domain.AddPartition(ctx, iface.PartitionID(0))
 
-	host2, err := ring1.AddHost(ctx, "127.0.0.1", 12346, []string{})
+	host1, err := ring1.AddHost(ctx, "127.0.0.1", 12346, []string{})
 	fmt.Println(err)
 
-	host2Domain, err := host2.AddDomain(ctx, domain)
+	host2Domain, err := host1.AddDomain(ctx, domain)
 	host2Domain.AddPartition(ctx, iface.PartitionID(1))
 
 	dg1, err := coord.AddDomainGroup(ctx, "dg1")
@@ -123,7 +123,7 @@ func TestIt(t *testing.T) {
 
 	for key, val := range values {
 		partition := partitioner.Partition([]byte(key), 2)
-		fmt.Println(partition)
+		fmt.Printf("%v => %v\n", key, partition)
 		if partition == 0 {
 			server1Values[key] = val
 		} else {
@@ -134,8 +134,8 @@ func TestIt(t *testing.T) {
 	fmt.Println("Partition 1: ", server1Values)
 	fmt.Println("Partition 2: ", server2Values)
 
-	close1 := createServer(t, ctx, host1, thrift_services.NewPartitionServerHandler(server1Values))
-	close2 := createServer(t, ctx, host2, thrift_services.NewPartitionServerHandler(server2Values))
+	close1 := createServer(t, ctx, host0, thrift_services.NewPartitionServerHandler(server1Values))
+	close2 := createServer(t, ctx, host1, thrift_services.NewPartitionServerHandler(server2Values))
 
 	options := NewHankSmartClientOptions().
 		SetNumConnectionsPerHost(2).
@@ -157,23 +157,20 @@ func TestIt(t *testing.T) {
 		return host1.GetState() == iface.HOST_UPDATING
 	})
 
-	updating, err := smartClient.Get(domain.GetName(), []byte("key1"))
-
-	fmt.Println(updating)
-
-	assert.True(t, reflect.DeepEqual(NoConnectionAvailableResponse(), updating))
-
-
+	fixtures.WaitUntilOrDie(t, func() bool {
+		updating, _ := smartClient.Get(domain.GetName(), []byte("key1"))
+		return reflect.DeepEqual(NoConnectionAvailableResponse(), updating)
+	})
 
 	/*
-		      // Host is not available
-	      host1.setState(HostState.UPDATING);
-	      assertEquals(HankResponse.xception(HankException.no_connection_available(true)),
-	          client.get("existent_domain", KEY_1));
+			      // Host is not available
+		      host0.setState(HostState.UPDATING);
+		      assertEquals(HankResponse.xception(HankException.no_connection_available(true)),
+		          client.get("existent_domain", KEY_1));
 
-	      // Host is offline but it's the only one, use it opportunistically
-	      host2.setState(HostState.OFFLINE);
-	      assertEquals(HankResponse.value(VALUE_2), client.get("existent_domain", KEY_2));
+		      // Host is offline but it's the only one, use it opportunistically
+		      host1.setState(HostState.OFFLINE);
+		      assertEquals(HankResponse.value(VALUE_2), client.get("existent_domain", KEY_2));
 
 	*/
 

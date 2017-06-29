@@ -99,6 +99,8 @@ type Host interface {
 
 	GetState() HostState
 
+	GetID() string
+
 	//  stub
 }
 

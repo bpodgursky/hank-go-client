@@ -18,7 +18,7 @@ import (
 func TestQueryWhenServing(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 	ctx := serializers.NewThreadCtx()
-	host, err := coordinator.CreateZkHost(ctx, client, "/hank/host/host1", "127.0.0.1", 12345, []string{})
+	host, err := coordinator.CreateZkHost(ctx, client, &serializers.NoOp{}, "/hank/host/host1", "127.0.0.1", 12345, []string{})
 	if err != nil {
 		fmt.Println(err)
 		t.Fail()
@@ -82,7 +82,7 @@ func TestTimeouts(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
 	ctx := serializers.NewThreadCtx()
-	host, err := coordinator.CreateZkHost(ctx, client, "/hank/host/host1", "127.0.0.1", 12345, []string{})
+	host, err := coordinator.CreateZkHost(ctx, client, &serializers.NoOp{},"/hank/host/host1", "127.0.0.1", 12345, []string{})
 	if err != nil {
 		fmt.Println(err)
 		t.Fail()
