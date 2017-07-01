@@ -6,12 +6,12 @@ import (
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/hashicorp/golang-lru"
 	"math"
 	"os"
 	"strconv"
 	"sync"
 	"time"
+	"github.com/karlseguin/ccache"
 )
 
 type RequestCounters struct {
@@ -50,7 +50,7 @@ type HankSmartClient struct {
 	domainToPartToConnections map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool
 	connectionLock            *sync.Mutex
 
-	cache    *lru.Cache
+	cache    *ccache.Cache
 	counters *RequestCounters
 
 	cacheUpdateLock *SingleLockSemaphore
@@ -76,10 +76,10 @@ func NewHankSmartClient(
 		return nil, registerErr
 	}
 
-	var cache *lru.Cache
+	var cache *ccache.Cache
 
 	if options.ResponseCacheEnabled {
-		cache, err = lru.New(int(options.ResponseCacheNumItems))
+		cache = ccache.New(ccache.Configure().MaxSize(int64(options.ResponseCacheNumItems)))
 	}
 
 	connectionCacheLock := NewSingleLockSemaphore()
@@ -213,7 +213,7 @@ func (p *HankSmartClient) Get(domainName string, key []byte) (*hank.HankResponse
 
 type Entry struct {
 	domain iface.DomainID
-	key    []byte
+	key    string
 }
 
 func (p *HankSmartClient) get(domain iface.Domain, key []byte) (*hank.HankResponse, error) {
@@ -227,16 +227,18 @@ func (p *HankSmartClient) get(domain iface.Domain, key []byte) (*hank.HankRespon
 	}
 
 	domainID := domain.GetId()
-	entry := Entry{domainID, key}
+	entry := strconv.Itoa(int(domainID)) + "-"+string(key)
 
 	var val interface{}
-	var ok bool
 
 	if p.cache != nil {
-		val, ok = p.cache.Get(entry)
+		item := p.cache.Get(entry)
+		if item !=nil && !item.Expired() {
+			val = item.Value()
+		}
 	}
 
-	if ok {
+	if val != nil {
 		p.counters.increment(1, 1)
 		return val.(*hank.HankResponse), nil
 	} else {
@@ -266,7 +268,7 @@ func (p *HankSmartClient) get(domain iface.Domain, key []byte) (*hank.HankRespon
 		response := pool.Get(domain, key, p.options.QueryMaxNumTries, keyHash)
 
 		if p.cache != nil && response != nil && (response.IsSetNotFound() || response.IsSetValue()) {
-			p.cache.Add(key, response)
+			p.cache.Set(entry, response, p.options.ResponseCacheExpiryTime)
 		}
 
 		if response.IsSetXception() {
@@ -325,6 +327,8 @@ func (p *HankSmartClient) buildNewConnectionCache(
 			for _, hostDomain := range host.GetAssignedDomains(ctx) {
 
 				domain, err := hostDomain.GetDomain(ctx, p.coordinator)
+				fmt.Printf("Found assigned %v : %v \n", host.GetAddress().Print(), domain.GetName())
+
 				if err != nil {
 					return err
 				}

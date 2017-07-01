@@ -9,16 +9,22 @@ import (
 
 type MapPartitionServerHandler struct {
 	mockData map[string]string
+	NumRequests int32
 }
 
 func NewPartitionServerHandler(mockData map[string]string) *MapPartitionServerHandler {
 	return &MapPartitionServerHandler{mockData: mockData}
 }
 
+func (p *MapPartitionServerHandler) ClearRequestCounters(){
+	p.NumRequests = 0
+}
+
 //	assume everything is in one domain for testing
 func (p *MapPartitionServerHandler) Get(domain_id int32, key []byte) (r *hank.HankResponse, err error) {
-	var response = hank.NewHankResponse()
+	p.NumRequests++
 
+	var response = hank.NewHankResponse()
 	response.Value = []byte(p.mockData[string(key)])
 	response.NotFound = newFalse()
 	response.Xception = nil

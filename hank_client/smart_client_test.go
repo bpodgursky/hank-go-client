@@ -83,25 +83,25 @@ func TestIt(t *testing.T) {
 		"/hank/domain_groups",
 	)
 
-	domain, err := coord.AddDomain(ctx, "existent_domain", 2, "", "", "com.liveramp.hank.partitioner.Murmur64Partitioner", []string{})
+	domain0, err := coord.AddDomain(ctx, "existent_domain", 2, "", "", "com.liveramp.hank.partitioner.Murmur64Partitioner", []string{})
 
 	rg1, err := coord.AddRingGroup(ctx, "rg1")
 	ring1, err := rg1.AddRing(ctx, iface.RingID(0))
 
 	host0, err := ring1.AddHost(ctx, "localhost", 12345, []string{})
-	host1Domain, err := host0.AddDomain(ctx, domain)
-	host1Domain.AddPartition(ctx, iface.PartitionID(0))
+	host0Domain, err := host0.AddDomain(ctx, domain0)
+	host0Domain.AddPartition(ctx, iface.PartitionID(0))
 
 	host1, err := ring1.AddHost(ctx, "127.0.0.1", 12346, []string{})
 	fmt.Println(err)
 
-	host2Domain, err := host1.AddDomain(ctx, domain)
-	host2Domain.AddPartition(ctx, iface.PartitionID(1))
+	host1Domain, err := host1.AddDomain(ctx, domain0)
+	host1Domain.AddPartition(ctx, iface.PartitionID(1))
 
 	dg1, err := coord.AddDomainGroup(ctx, "dg1")
 
 	versions := make(map[iface.DomainID]iface.VersionID)
-	versions[domain.GetId()] = iface.VersionID(0)
+	versions[domain0.GetId()] = iface.VersionID(0)
 	dg1.SetDomainVersions(ctx, versions)
 
 	partitioner := &coordinator.Murmur64Partitioner{}
@@ -131,11 +131,11 @@ func TestIt(t *testing.T) {
 		}
 	}
 
-	fmt.Println("Partition 1: ", server1Values)
-	fmt.Println("Partition 2: ", server2Values)
+	handler1 := thrift_services.NewPartitionServerHandler(server1Values)
+	handler12 := thrift_services.NewPartitionServerHandler(server2Values)
 
-	close1 := createServer(t, ctx, host0, thrift_services.NewPartitionServerHandler(server1Values))
-	close2 := createServer(t, ctx, host1, thrift_services.NewPartitionServerHandler(server2Values))
+	close1 := createServer(t, ctx, host0, handler1)
+	close2 := createServer(t, ctx, host1, handler12)
 
 	options := NewHankSmartClientOptions().
 		SetNumConnectionsPerHost(2).
@@ -145,41 +145,105 @@ func TestIt(t *testing.T) {
 
 	//	check each record can be found
 	for key, value := range values {
-		val, _ := smartClient.Get(domain.GetName(), []byte(key))
+		val, _ := smartClient.Get(domain0.GetName(), []byte(key))
 		assert.Equal(t, value, string(val.Value))
 	}
 
 	fakeDomain, _ := smartClient.Get("fake", []byte("na"))
 	assert.True(t, reflect.DeepEqual(noSuchDomain(), fakeDomain))
 
-	host1.SetState(ctx, iface.HOST_UPDATING)
+	//	no replicas live if updating
+	setStateBlocking(t, host1, ctx, iface.HOST_UPDATING)
 	fixtures.WaitUntilOrDie(t, func() bool {
-		return host1.GetState() == iface.HOST_UPDATING
-	})
-
-	fixtures.WaitUntilOrDie(t, func() bool {
-		updating, _ := smartClient.Get(domain.GetName(), []byte("key1"))
+		updating, _ := smartClient.Get(domain0.GetName(), []byte("key1"))
 		return reflect.DeepEqual(NoConnectionAvailableResponse(), updating)
 	})
 
-	/*
-			      // Host is not available
-		      host0.setState(HostState.UPDATING);
-		      assertEquals(HankResponse.xception(HankException.no_connection_available(true)),
-		          client.get("existent_domain", KEY_1));
+	//	when offline, try anyway if it's the only replica
+	setStateBlocking(t, host1, ctx, iface.HOST_OFFLINE)
+	fixtures.WaitUntilOrDie(t, func() bool {
+		updating, _ := smartClient.Get(domain0.GetName(), []byte("key1"))
+		return reflect.DeepEqual("value1", string(updating.Value))
+	})
 
-		      // Host is offline but it's the only one, use it opportunistically
-		      host1.setState(HostState.OFFLINE);
-		      assertEquals(HankResponse.value(VALUE_2), client.get("existent_domain", KEY_2));
+	//	ok again when serving
+	setStateBlocking(t, host1, ctx, iface.HOST_SERVING)
+	fixtures.WaitUntilOrDie(t, func() bool {
+		updating, _ := smartClient.Get(domain0.GetName(), []byte("key1"))
+		return reflect.DeepEqual("value1", string(updating.Value))
+	})
 
-	*/
+	//	test when a new domain is added, the client picks it up
+	domain1, err := coord.AddDomain(ctx, "second_domain", 2, "", "", "com.liveramp.hank.partitioner.Murmur64Partitioner", []string{})
 
-	//assertEquals(HankResponse.xception(HankException.no_such_domain(true)), client.get("nonexistent_domain", null));
+	//	assign partitions to it
+	host1Domain1, err := host1.AddDomain(ctx, domain1)
+	host1Domain1.AddPartition(ctx, iface.PartitionID(1))
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return len(host1.GetAssignedDomains(ctx)) == 2
+	})
+
+	//	verify that the client can query the domain now
+	fixtures.WaitUntilOrDie(t, func() bool {
+		updating, _ := smartClient.Get(domain1.GetName(), []byte("key1"))
+		return reflect.DeepEqual("value1", string(updating.Value))
+	})
+
+	//	test caching
+
+	handler12.ClearRequestCounters()
+
+	cachingOptions := NewHankSmartClientOptions().
+		SetResponseCacheEnabled(true).
+		SetResponseCacheNumItems(10).
+		SetNumConnectionsPerHost(2).
+		SetQueryTimeoutMs(100)
+
+	cachingClient, err := NewHankSmartClient(coord, "rg1", cachingOptions)
+
+	//	query once
+	val, err := cachingClient.Get(domain1.GetName(), []byte("key1"))
+	assert.True(t, reflect.DeepEqual("value1", string(val.Value)))
+	assert.Equal(t, int32(1), handler12.NumRequests)
+
+	// verify was found in cache
+	val, err = cachingClient.Get(domain1.GetName(), []byte("key1"))
+	assert.True(t, reflect.DeepEqual("value1", string(val.Value)))
+	assert.Equal(t, int32(1), handler12.NumRequests)
+
+	//	TODO cache expiry
+
+	//	test adding a new server and taking one of the original ones down
+
+	setStateBlocking(t, host1, ctx, iface.HOST_UPDATING)
+
+	host2, err := ring1.AddHost(ctx, "localhost", 12347, []string{})
+	host2Domain, err := host2.AddDomain(ctx, domain0)
+	host2Domain.AddPartition(ctx, iface.PartitionID(1))
+
+	handler2 := thrift_services.NewPartitionServerHandler(server2Values)
+	close3 := createServer(t, ctx, host2, handler2)
+
+	//	make server 1 unreachable
+	fixtures.WaitUntilOrDie(t, func() bool {
+		updating, _ := smartClient.Get(domain0.GetName(), []byte("key1"))
+		fmt.Println(updating)
+		return reflect.DeepEqual("value1", string(updating.Value))
+	})
 
 	smartClient.Stop()
+	cachingClient.Stop()
 
 	close1()
 	close2()
+	close3()
 
 	fixtures.TeardownZookeeper(cluster, client)
+}
+
+func setStateBlocking(t *testing.T, host iface.Host, ctx *serializers.ThreadCtx, state iface.HostState) {
+	host.SetState(ctx, state)
+	fixtures.WaitUntilOrDie(t, func() bool {
+		return host.GetState() == state
+	})
 }

@@ -1,5 +1,5 @@
-hash: 255c4a23455342ae3dfbd7d5669dd594607beaba666e6b8c1509a546d733cdc2
-updated: 2017-06-16T14:37:28.406693784-07:00
+hash: 7924c61fafa7aa512b9c837540e46f2bcb93c34ce6e78dcb42b4badb3dfdc302
+updated: 2017-06-30T16:05:34.911821838-07:00
 imports:
 - name: git.apache.org/thrift.git
   version: e41e47c2b4b2407bac525d203b281c63fb253978
@@ -23,6 +23,8 @@ imports:
   version: 0a025b7e63adc15a622f29b0b2c4c3848243bbf6
   subpackages:
   - simplelru
+- name: github.com/karlseguin/ccache
+  version: a2d62155777b39595c825ed3824279e642a5db3c
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:

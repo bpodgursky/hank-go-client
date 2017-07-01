@@ -1,5 +1,7 @@
 package hank_client
 
+import "time"
+
 type EnvironmentValue struct {
 	Key   string
 	Value string
@@ -17,6 +19,7 @@ type hankSmartClientOptions struct {
 
 	ResponseCacheEnabled  bool
 	ResponseCacheNumItems int32
+	ResponseCacheExpiryTime time.Duration
 }
 
 func NewHankSmartClientOptions() *hankSmartClientOptions {
@@ -26,6 +29,8 @@ func NewHankSmartClientOptions() *hankSmartClientOptions {
 		EstablishConnectionTimeoutMs: int32(1000),
 		QueryTimeoutMs:               int32(1000),
 		BulkQueryTimeoutMs:           int32(1000),
+		ResponseCacheNumItems:        int32(1000),
+		ResponseCacheExpiryTime:      time.Hour,
 	}
 }
 
