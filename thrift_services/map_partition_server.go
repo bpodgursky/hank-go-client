@@ -8,7 +8,7 @@ import (
 )
 
 type MapPartitionServerHandler struct {
-	mockData map[string]string
+	mockData    map[string]string
 	NumRequests int32
 }
 
@@ -16,7 +16,7 @@ func NewPartitionServerHandler(mockData map[string]string) *MapPartitionServerHa
 	return &MapPartitionServerHandler{mockData: mockData}
 }
 
-func (p *MapPartitionServerHandler) ClearRequestCounters(){
+func (p *MapPartitionServerHandler) ClearRequestCounters() {
 	p.NumRequests = 0
 }
 
@@ -25,14 +25,26 @@ func (p *MapPartitionServerHandler) Get(domain_id int32, key []byte) (r *hank.Ha
 	p.NumRequests++
 
 	var response = hank.NewHankResponse()
-	response.Value = []byte(p.mockData[string(key)])
-	response.NotFound = newFalse()
-	response.Xception = nil
+
+	val, ok := p.mockData[string(key)]
+	if ok {
+		response.Value = []byte(val)
+		response.NotFound = newFalse()
+		response.Xception = nil
+	} else {
+		response.NotFound = newTrue()
+	}
+
 	return response, nil
 }
 
 func newFalse() *bool {
 	b := false
+	return &b
+}
+
+func newTrue() *bool {
+	b := true
 	return &b
 }
 

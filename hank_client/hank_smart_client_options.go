@@ -34,6 +34,11 @@ func NewHankSmartClientOptions() *hankSmartClientOptions {
 	}
 }
 
+func (p *hankSmartClientOptions) SetResponseCacheExpiryTime(time time.Duration) *hankSmartClientOptions {
+	p.ResponseCacheExpiryTime = time
+	return p
+}
+
 func (p *hankSmartClientOptions) SetNumConnectionsPerHost(connections int32) *hankSmartClientOptions {
 	p.NumConnectionsPerHost = connections
 	return p

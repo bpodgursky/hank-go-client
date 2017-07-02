@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestAsdf(t *testing.T) {
@@ -132,10 +133,10 @@ func TestIt(t *testing.T) {
 	}
 
 	handler1 := thrift_services.NewPartitionServerHandler(server1Values)
-	handler12 := thrift_services.NewPartitionServerHandler(server2Values)
+	handler2 := thrift_services.NewPartitionServerHandler(server2Values)
 
 	close1 := createServer(t, ctx, host0, handler1)
-	close2 := createServer(t, ctx, host1, handler12)
+	close2 := createServer(t, ctx, host1, handler2)
 
 	options := NewHankSmartClientOptions().
 		SetNumConnectionsPerHost(2).
@@ -173,14 +174,20 @@ func TestIt(t *testing.T) {
 		return reflect.DeepEqual("value1", string(updating.Value))
 	})
 
+	setStateBlocking(t, host0, ctx, iface.HOST_SERVING)
+
 	//	test when a new domain is added, the client picks it up
 	domain1, err := coord.AddDomain(ctx, "second_domain", 2, "", "", "com.liveramp.hank.partitioner.Murmur64Partitioner", []string{})
 
 	//	assign partitions to it
 	host1Domain1, err := host1.AddDomain(ctx, domain1)
 	host1Domain1.AddPartition(ctx, iface.PartitionID(1))
+
+	host0Domain2, err := host0.AddDomain(ctx, domain1)
+	host0Domain2.AddPartition(ctx, iface.PartitionID(0))
+
 	fixtures.WaitUntilOrDie(t, func() bool {
-		return len(host1.GetAssignedDomains(ctx)) == 2
+		return len(host1.GetAssignedDomains(ctx)) == 2 && len(host0.GetAssignedDomains(ctx)) == 2
 	})
 
 	//	verify that the client can query the domain now
@@ -191,27 +198,44 @@ func TestIt(t *testing.T) {
 
 	//	test caching
 
-	handler12.ClearRequestCounters()
+	handler1.ClearRequestCounters()
+	handler2.ClearRequestCounters()
 
 	cachingOptions := NewHankSmartClientOptions().
 		SetResponseCacheEnabled(true).
 		SetResponseCacheNumItems(10).
 		SetNumConnectionsPerHost(2).
-		SetQueryTimeoutMs(100)
+		SetQueryTimeoutMs(100).
+		SetResponseCacheExpiryTime(time.Second)
 
 	cachingClient, err := NewHankSmartClient(coord, "rg1", cachingOptions)
 
 	//	query once
 	val, err := cachingClient.Get(domain1.GetName(), []byte("key1"))
 	assert.True(t, reflect.DeepEqual("value1", string(val.Value)))
-	assert.Equal(t, int32(1), handler12.NumRequests)
+	assert.Equal(t, int32(1), handler2.NumRequests)
 
 	// verify was found in cache
 	val, err = cachingClient.Get(domain1.GetName(), []byte("key1"))
 	assert.True(t, reflect.DeepEqual("value1", string(val.Value)))
-	assert.Equal(t, int32(1), handler12.NumRequests)
+	assert.Equal(t, int32(1), handler2.NumRequests)
 
-	//	TODO cache expiry
+	//	test cache not found
+	handler2.ClearRequestCounters()
+
+	val, err = cachingClient.Get(domain1.GetName(), []byte("beef"))
+	assert.True(t, *val.NotFound)
+	assert.Equal(t, int32(1), handler1.NumRequests)
+
+	val, err = cachingClient.Get(domain1.GetName(), []byte("beef"))
+	assert.True(t, *val.NotFound)
+	assert.Equal(t, int32(1), handler1.NumRequests)
+
+	//	test cache expires
+	time.Sleep(time.Second * 2)
+	val, err = cachingClient.Get(domain1.GetName(), []byte("beef"))
+	assert.True(t, *val.NotFound)
+	assert.Equal(t, int32(2), handler1.NumRequests)
 
 	//	test adding a new server and taking one of the original ones down
 
@@ -221,8 +245,8 @@ func TestIt(t *testing.T) {
 	host2Domain, err := host2.AddDomain(ctx, domain0)
 	host2Domain.AddPartition(ctx, iface.PartitionID(1))
 
-	handler2 := thrift_services.NewPartitionServerHandler(server2Values)
-	close3 := createServer(t, ctx, host2, handler2)
+	handler3 := thrift_services.NewPartitionServerHandler(server2Values)
+	close3 := createServer(t, ctx, host2, handler3)
 
 	//	make server 1 unreachable
 	fixtures.WaitUntilOrDie(t, func() bool {
