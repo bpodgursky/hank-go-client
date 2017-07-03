@@ -9,7 +9,6 @@ import (
 	"time"
 	"github.com/bpodgursky/hank-go-client/fixtures"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 func TestZkCoordinator(t *testing.T) {
@@ -18,7 +17,7 @@ func TestZkCoordinator(t *testing.T) {
 	zkCoordinator, err1 := createCoordinator(client)
 	zkCoordinator3, err2 := createCoordinator(client)
 
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 
 	if err1 != nil {
 		assert.Fail(t, "Error initializing coordinator 1")
@@ -39,7 +38,7 @@ func TestZkCoordinator(t *testing.T) {
 	assert.Equal(t, "group1", group.GetName())
 
 	//  make sure this one picked up the message
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		fmt.Println(zkCoordinator3)
 		domainGroup := zkCoordinator3.GetDomainGroup("group1")
 		return domainGroup != nil
@@ -61,7 +60,7 @@ func TestZkCoordinator(t *testing.T) {
 	rg1Coord1, _ := zkCoordinator.AddRingGroup(ctx, "rg1")
 
 	var rg1Coord2 iface.RingGroup
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		rg1Coord2 = zkCoordinator2.GetRingGroup("rg1")
 		return rg1Coord2 != nil
 	})
@@ -69,7 +68,7 @@ func TestZkCoordinator(t *testing.T) {
 	ringCoord1, _ := rg1Coord1.AddRing(ctx, 0)
 
 	var ringCoord2 iface.Ring
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		ringCoord2 = rg1Coord2.GetRing(0)
 		return ringCoord2 != nil
 	})
@@ -77,14 +76,14 @@ func TestZkCoordinator(t *testing.T) {
 	host1Coord1, _ := ringCoord1.AddHost(ctx, "127.0.0.1", 54321, []string{})
 
 	var hostsCoord2 []iface.Host
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		hostsCoord2 = ringCoord2.GetHosts(ctx)
 		return len(hostsCoord2) == 1
 	})
 
 	var host1Coord2 = hostsCoord2[0]
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return host1Coord2.GetMetadata(ctx).HostName == "127.0.0.1"
 	})
 
@@ -92,7 +91,7 @@ func TestZkCoordinator(t *testing.T) {
 	flags["flag1"] = "value1"
 	host1Coord1.SetEnvironmentFlags(ctx, flags)
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return reflect.DeepEqual(host1Coord2.GetEnvironmentFlags(ctx), flags)
 	})
 
@@ -101,12 +100,12 @@ func TestZkCoordinator(t *testing.T) {
 	domain1, _ := zkCoordinator.AddDomain(ctx, "domain0", 1, "", "", "", []string{})
 	zkCoordinator.AddDomain(ctx, "domain1", 1, "", "", "", []string{})
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		domain, _ := zkCoordinator2.GetDomainById(ctx, 0)
 		return domain != nil && domain.GetName() == "domain0"
 	})
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		domain, _ := zkCoordinator2.GetDomainById(ctx, 1)
 		return domain != nil && domain.GetName() == "domain1"
 	})
@@ -114,7 +113,7 @@ func TestZkCoordinator(t *testing.T) {
 	hostDomain, err := host1Coord1.AddDomain(ctx, domain1)
 	hostDomain.AddPartition(ctx, 0)
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		hostDomain := host1Coord2.GetHostDomain(ctx, iface.DomainID(0))
 
 		if hostDomain == nil {
@@ -132,7 +131,7 @@ func TestZkCoordinator(t *testing.T) {
 
 	dg1.SetDomainVersions(ctx, map[iface.DomainID]iface.VersionID{0: 0})
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		version := dg1coord2.GetDomainVersion(iface.DomainID(0))
 
 		if version == nil {

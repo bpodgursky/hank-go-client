@@ -9,20 +9,19 @@ import (
 	"github.com/samuel/go-zookeeper/zk"
 	"time"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 type Constructor func() interface{}
 
-type Deserializer func(ctx *thriftext.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error)
-type Serializer func(ctx *thriftext.ThreadCtx, val interface{}) ([]byte, error)
+type Deserializer func(ctx *iface.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error)
+type Serializer func(ctx *iface.ThreadCtx, val interface{}) ([]byte, error)
 
 type ZkWatchedNode struct {
 	node        *cache.TreeCache
 	client      curator.CuratorFramework
 	path        string
 	constructor Constructor
-	ctx         *thriftext.ThreadCtx
+	ctx         *iface.ThreadCtx
 	listeners   []iface.DataListener
 
 	serializer   Serializer
@@ -97,7 +96,7 @@ func NewZkWatchedNode(
 func LoadZkWatchedNode(client curator.CuratorFramework, path string, constructor Constructor, serializer Serializer, deserializer Deserializer) (*ZkWatchedNode, error) {
 
 	//  TODO we might need a pool of these -- evaluate in production.  in a more civilized world, we'd just use a ThreadLocal
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 
 	watchedNode := &ZkWatchedNode{client: client, path: path, constructor: constructor, ctx: ctx, listeners: []iface.DataListener{}, serializer: serializer, deserializer: deserializer}
 
@@ -135,7 +134,7 @@ func (p *ZkWatchedNode) Get() interface{} {
 	return p.value
 }
 
-func (p *ZkWatchedNode) Set(ctx *thriftext.ThreadCtx,
+func (p *ZkWatchedNode) Set(ctx *iface.ThreadCtx,
 	value interface{}) error {
 
 	bytes, err := p.serializer(ctx, value)
@@ -154,7 +153,7 @@ func (p *ZkWatchedNode) AddListener(listener iface.DataListener) {
 // Note: update() should not modify its argument
 type Updater func(interface{}) interface{}
 
-func (p *ZkWatchedNode) Update(ctx *thriftext.ThreadCtx, updater Updater) (interface{}, error) {
+func (p *ZkWatchedNode) Update(ctx *iface.ThreadCtx, updater Updater) (interface{}, error) {
 
 	backoffStrat := backoff.NewExponentialBackOff()
 	backoffStrat.MaxElapsedTime = time.Second * 10

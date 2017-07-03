@@ -1,4 +1,4 @@
-package thriftext
+package iface
 
 import (
 	"sync"

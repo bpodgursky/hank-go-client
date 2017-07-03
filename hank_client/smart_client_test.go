@@ -3,7 +3,6 @@ package hank_client
 import (
 	"fmt"
 	"github.com/bpodgursky/hank-go-client/fixtures"
-	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/thrift_services"
 	"github.com/stretchr/testify/assert"
@@ -11,13 +10,12 @@ import (
 	"testing"
 	"time"
 	"github.com/bpodgursky/hank-go-client/zk_coordinator"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 func TestSmartClient(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 
 	coordinator, _ := zk_coordinator.NewZkCoordinator(client,
 		"/hank/domains",
@@ -27,7 +25,7 @@ func TestSmartClient(t *testing.T) {
 
 	rg, _ := coordinator.AddRingGroup(ctx, "group1")
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return coordinator.GetRingGroup("group1") != nil
 	})
 
@@ -37,7 +35,7 @@ func TestSmartClient(t *testing.T) {
 	smartClient, _ := NewHankSmartClient(coordinator, "group1", options)
 	smartClient2, _ := NewHankSmartClient(coordinator, "group1", options)
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return len(rg.GetClients()) == 2
 	})
 
@@ -53,17 +51,10 @@ func TestSmartClient(t *testing.T) {
 	fixtures.TeardownZookeeper(cluster, client)
 }
 
-func Val(val string) *hank.HankResponse {
-	resp := &hank.HankResponse{}
-	resp.Value = []byte(val)
-	resp.NotFound = newFalse()
-	return resp
-}
-
 func TestIt(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 
 	coord, _ := zk_coordinator.NewZkCoordinator(client,
 		"/hank/domains",
@@ -142,21 +133,21 @@ func TestIt(t *testing.T) {
 
 	//	no replicas live if updating
 	setStateBlocking(t, host1, ctx, iface.HOST_UPDATING)
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		updating, _ := smartClient.Get(domain0.GetName(), []byte("key1"))
 		return reflect.DeepEqual(NoConnectionAvailableResponse(), updating)
 	})
 
 	//	when offline, try anyway if it's the only replica
 	setStateBlocking(t, host1, ctx, iface.HOST_OFFLINE)
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		updating, _ := smartClient.Get(domain0.GetName(), []byte("key1"))
 		return reflect.DeepEqual("value1", string(updating.Value))
 	})
 
 	//	ok again when serving
 	setStateBlocking(t, host1, ctx, iface.HOST_SERVING)
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		updating, _ := smartClient.Get(domain0.GetName(), []byte("key1"))
 		return reflect.DeepEqual("value1", string(updating.Value))
 	})
@@ -173,12 +164,12 @@ func TestIt(t *testing.T) {
 	host0Domain2, err := host0.AddDomain(ctx, domain1)
 	host0Domain2.AddPartition(ctx, iface.PartitionID(0))
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return len(host1.GetAssignedDomains(ctx)) == 2 && len(host0.GetAssignedDomains(ctx)) == 2
 	})
 
 	//	verify that the client can query the domain now
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		updating, _ := smartClient.Get(domain1.GetName(), []byte("key1"))
 		return reflect.DeepEqual("value1", string(updating.Value))
 	})
@@ -236,7 +227,7 @@ func TestIt(t *testing.T) {
 	close3 := createServer(t, ctx, host2, handler3)
 
 	//	make server 1 unreachable
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		updating, _ := smartClient.Get(domain0.GetName(), []byte("key1"))
 		fmt.Println(updating)
 		return reflect.DeepEqual("value1", string(updating.Value))
@@ -252,9 +243,9 @@ func TestIt(t *testing.T) {
 	fixtures.TeardownZookeeper(cluster, client)
 }
 
-func setStateBlocking(t *testing.T, host iface.Host, ctx *thriftext.ThreadCtx, state iface.HostState) {
+func setStateBlocking(t *testing.T, host iface.Host, ctx *iface.ThreadCtx, state iface.HostState) {
 	host.SetState(ctx, state)
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return host.GetState() == state
 	})
 }

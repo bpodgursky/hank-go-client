@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/hank_types"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 	"github.com/bpodgursky/hank-go-client/curatorext"
 )
 
@@ -24,7 +23,7 @@ type ZkRingGroup struct {
 	localNotifier *iface.MultiNotifier
 }
 
-func createZkRingGroup(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, name string, rootPath string) (iface.RingGroup, error) {
+func createZkRingGroup(ctx *iface.ThreadCtx, client curator.CuratorFramework, name string, rootPath string) (iface.RingGroup, error) {
 	rgRootPath := path.Join(rootPath, name)
 
 	err := curatorext.AssertEmpty(client, rgRootPath)
@@ -50,7 +49,7 @@ func createZkRingGroup(ctx *thriftext.ThreadCtx, client curator.CuratorFramework
 
 }
 
-func loadZkRingGroup(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, rgRootPath string) (interface{}, error) {
+func loadZkRingGroup(ctx *iface.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, rgRootPath string) (interface{}, error) {
 
 	err := curatorext.AssertExists(client, rgRootPath)
 	if err != nil {
@@ -72,7 +71,7 @@ func loadZkRingGroup(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, 
 
 //  loader
 
-func loadClientMetadata(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, path string) (interface{}, error) {
+func loadClientMetadata(ctx *iface.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, path string) (interface{}, error) {
 	metadata := hank.NewClientMetadata()
 	curatorext.LoadThrift(ctx, path, client, metadata)
 	return metadata, nil
@@ -80,7 +79,7 @@ func loadClientMetadata(ctx *thriftext.ThreadCtx, client curator.CuratorFramewor
 
 //  methods
 
-func (p *ZkRingGroup) RegisterClient(ctx *thriftext.ThreadCtx, metadata *hank.ClientMetadata) error {
+func (p *ZkRingGroup) RegisterClient(ctx *iface.ThreadCtx, metadata *hank.ClientMetadata) error {
 	return ctx.SetThrift(curatorext.CreateEphemeralSequential(path.Join(p.clients.Root, CLIENT_NODE), p.client), metadata)
 }
 
@@ -107,7 +106,7 @@ func ringName(ringNum iface.RingID) string {
 	return "ring-" + strconv.Itoa(int(ringNum))
 }
 
-func (p *ZkRingGroup) AddRing(ctx *thriftext.ThreadCtx, ringNum iface.RingID) (iface.Ring, error) {
+func (p *ZkRingGroup) AddRing(ctx *iface.ThreadCtx, ringNum iface.RingID) (iface.Ring, error) {
 	ringChild := ringName(ringNum)
 	ringRoot := path.Join(p.rings.Root, ringChild)
 

@@ -7,7 +7,6 @@ import (
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"time"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 type HostConnection struct {
@@ -22,7 +21,7 @@ type HostConnection struct {
 	socket *thrift.TSocket
 	client *hank.PartitionServerClient
 
-	ctx *thriftext.ThreadCtx
+	ctx *iface.ThreadCtx
 
 	lock *TimeoutMutex
 }

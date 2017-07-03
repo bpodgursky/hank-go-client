@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/bpodgursky/hank-go-client/hank_client"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 	"github.com/bpodgursky/hank-go-client/zk_coordinator"
 	"github.com/curator-go/curator"
 	"log"
@@ -21,7 +20,7 @@ func main() {
 	client := curator.NewClient(argsWithoutProg[0], curator.NewRetryNTimes(1, time.Second))
 	client.Start()
 
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 
 	coordinator, coordErr := zk_coordinator.NewZkCoordinator(client, "/hank/domains", "/hank/ring_groups", "/hank/domain_groups")
 	if coordErr != nil {

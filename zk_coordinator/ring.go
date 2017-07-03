@@ -7,7 +7,6 @@ import (
 	"path"
 	"regexp"
 	"strconv"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 	"github.com/bpodgursky/hank-go-client/curatorext"
 )
 
@@ -24,7 +23,7 @@ type ZkRing struct {
 	listener iface.DataChangeNotifier
 }
 
-func loadZkRing(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, root string) (interface{}, error) {
+func loadZkRing(ctx *iface.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, root string) (interface{}, error) {
 	matches := RING_REGEX.FindStringSubmatch(path.Base(root))
 
 	//  dumb design and rings are directly in the RG root, but can't change it here
@@ -46,7 +45,7 @@ func loadZkRing(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, liste
 	return nil, nil
 }
 
-func createZkRing(ctx *thriftext.ThreadCtx, root string, num iface.RingID, listener iface.DataChangeNotifier, client curator.CuratorFramework) (*ZkRing, error) {
+func createZkRing(ctx *iface.ThreadCtx, root string, num iface.RingID, listener iface.DataChangeNotifier, client curator.CuratorFramework) (*ZkRing, error) {
 	curatorext.CreateWithParents(client, curator.PERSISTENT, root, nil)
 
 	fmt.Println("Created via creation")
@@ -61,7 +60,7 @@ func createZkRing(ctx *thriftext.ThreadCtx, root string, num iface.RingID, liste
 
 //  public methods
 
-func (p *ZkRing) AddHost(ctx *thriftext.ThreadCtx, hostName string, port int, hostFlags []string) (iface.Host, error) {
+func (p *ZkRing) AddHost(ctx *iface.ThreadCtx, hostName string, port int, hostFlags []string) (iface.Host, error) {
 
 	host, err := CreateZkHost(ctx, p.client, p.listener, p.hosts.Root, hostName, port, hostFlags)
 	if err != nil {
@@ -76,7 +75,7 @@ func (p *ZkRing) AddHost(ctx *thriftext.ThreadCtx, hostName string, port int, ho
 	return host, err
 }
 
-func (p *ZkRing) GetHosts(ctx *thriftext.ThreadCtx) []iface.Host {
+func (p *ZkRing) GetHosts(ctx *iface.ThreadCtx) []iface.Host {
 
 	hosts := []iface.Host{}
 	for _, item := range p.hosts.Values() {

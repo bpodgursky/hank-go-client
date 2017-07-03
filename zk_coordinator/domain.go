@@ -6,7 +6,6 @@ import (
   "github.com/bpodgursky/hank-go-client/iface"
   "github.com/bpodgursky/hank-go-client/hank_types"
   "strings"
-  "github.com/bpodgursky/hank-go-client/thriftext"
   "github.com/bpodgursky/hank-go-client/curatorext"
 )
 
@@ -19,7 +18,7 @@ type ZkDomain struct {
   partitioner iface.Partitioner
 }
 
-func createZkDomain(ctx *thriftext.ThreadCtx,
+func createZkDomain(ctx *iface.ThreadCtx,
   root string,
   name string,
   id iface.DomainID,
@@ -71,7 +70,7 @@ func (p *ZkDomain) GetPartitioner() iface.Partitioner{
 }
 
 
-func loadZkDomain(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, root string) (interface{}, error) {
+func loadZkDomain(ctx *iface.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, root string) (interface{}, error) {
   name := path.Base(root)
 
   if path.Base(root) != KEY_DOMAIN_ID_COUNTER {

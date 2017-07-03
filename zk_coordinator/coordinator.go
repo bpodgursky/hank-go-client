@@ -4,7 +4,6 @@ import (
 	"github.com/curator-go/curator"
 	"path"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 	"github.com/bpodgursky/hank-go-client/curatorext"
 )
 
@@ -88,7 +87,7 @@ func (p *ZkCoordinator) GetDomainGroup(name string) iface.DomainGroup {
 	return iface.AsDomainGroup(p.domainGroups.Get(name))
 }
 
-func (p *ZkCoordinator) AddDomainGroup(ctx *thriftext.ThreadCtx, name string) (iface.DomainGroup, error) {
+func (p *ZkCoordinator) AddDomainGroup(ctx *iface.ThreadCtx, name string) (iface.DomainGroup, error) {
 
 	group, err := createZkDomainGroup(ctx, p.client, name, p.domainGroups.Root)
 	if err != nil {
@@ -104,7 +103,7 @@ func (p *ZkCoordinator) AddDomainGroup(ctx *thriftext.ThreadCtx, name string) (i
 
 }
 
-func (p *ZkCoordinator) AddRingGroup(ctx *thriftext.ThreadCtx, name string) (iface.RingGroup, error) {
+func (p *ZkCoordinator) AddRingGroup(ctx *iface.ThreadCtx, name string) (iface.RingGroup, error) {
 
 	group, err := createZkRingGroup(ctx, p.client, name, p.ringGroups.Root)
 	if err != nil {
@@ -119,7 +118,7 @@ func (p *ZkCoordinator) AddRingGroup(ctx *thriftext.ThreadCtx, name string) (ifa
 	return group, nil
 }
 
-func (p *ZkCoordinator) AddDomain(ctx *thriftext.ThreadCtx,
+func (p *ZkCoordinator) AddDomain(ctx *iface.ThreadCtx,
 	domainName string,
 	numParts int32,
 	storageEngineFactoryName string,
@@ -151,7 +150,7 @@ func (p *ZkCoordinator) AddDomain(ctx *thriftext.ThreadCtx,
 	return domain, nil
 }
 
-func (p *ZkCoordinator) getNextDomainID(ctx *thriftext.ThreadCtx) (iface.DomainID, error) {
+func (p *ZkCoordinator) getNextDomainID(ctx *iface.ThreadCtx) (iface.DomainID, error) {
 
 	val, error := p.domainIDCounter.Update(ctx, func(val interface{}) interface{} {
 		nextID := val.(int)
@@ -166,7 +165,7 @@ func (p *ZkCoordinator) getNextDomainID(ctx *thriftext.ThreadCtx) (iface.DomainI
 
 }
 
-func (p *ZkCoordinator) GetDomainById(ctx *thriftext.ThreadCtx, domainId iface.DomainID) (iface.Domain, error) {
+func (p *ZkCoordinator) GetDomainById(ctx *iface.ThreadCtx, domainId iface.DomainID) (iface.Domain, error) {
 
 	for _, inst := range p.domains.Values() {
 		domain := inst.(iface.Domain)

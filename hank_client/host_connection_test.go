@@ -12,12 +12,11 @@ import (
 	"testing"
 	"time"
 	"github.com/bpodgursky/hank-go-client/zk_coordinator"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 func TestQueryWhenServing(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 	host, err := zk_coordinator.CreateZkHost(ctx, client, &iface.NoOp{}, "/hank/host/host1", "127.0.0.1", 12345, []string{})
 	if err != nil {
 		fmt.Println(err)
@@ -41,7 +40,7 @@ func TestQueryWhenServing(t *testing.T) {
 
 	host.SetState(ctx, iface.HOST_IDLE)
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return host.GetState() == iface.HOST_IDLE
 	})
 
@@ -52,7 +51,7 @@ func TestQueryWhenServing(t *testing.T) {
 
 	host.SetState(ctx, iface.HOST_SERVING)
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return conn.IsServing()
 	})
 
@@ -81,7 +80,7 @@ func (p *SlowPartitionServerHandler) GetBulk(domain_id int32, keys [][]byte) (r 
 func TestTimeouts(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 	host, err := zk_coordinator.CreateZkHost(ctx, client, &iface.NoOp{},"/hank/host/host1", "127.0.0.1", 12345, []string{})
 	if err != nil {
 		fmt.Println(err)
@@ -99,7 +98,7 @@ func TestTimeouts(t *testing.T) {
 
 	conn := NewHostConnection(host, 100, 100, 100, 100)
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return conn.IsServing()
 	})
 

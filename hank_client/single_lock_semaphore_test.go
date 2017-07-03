@@ -25,7 +25,7 @@ func TestLock(t *testing.T) {
 	assert.False(t, read)
 	sem.Release()
 
-	fixtures.WaitUntilOrDie(t, func()bool {
+	fixtures.WaitUntilOrFail(t, func()bool {
 		return read
 	})
 

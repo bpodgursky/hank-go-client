@@ -2,7 +2,6 @@ package zk_coordinator
 
 import (
   "github.com/bpodgursky/hank-go-client/iface"
-  "github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 type ZkHostDomainPartition struct {
@@ -23,7 +22,7 @@ func (p *ZkHostDomainPartition) GetCurrentDomainVersion() iface.VersionID {
   return p.host.getCurrentDomainGroupVersion(p.domainId, p.partitionNumber)
 }
 
-func (p *ZkHostDomainPartition) SetCurrentDomainVersion(ctx *thriftext.ThreadCtx, version iface.VersionID) error {
+func (p *ZkHostDomainPartition) SetCurrentDomainVersion(ctx *iface.ThreadCtx, version iface.VersionID) error {
   return p.host.setCurrentDomainGroupVersion(ctx, p.domainId, p.partitionNumber, version)
 }
 

@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func WaitUntilOrDie(t *testing.T, expectTrue func() bool) error {
+func WaitUntilOrFail(t *testing.T, expectTrue func() bool) error {
 
 	backoffStrat := backoff.NewExponentialBackOff()
 	backoffStrat.MaxElapsedTime = time.Second * 10

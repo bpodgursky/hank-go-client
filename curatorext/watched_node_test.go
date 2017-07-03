@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"github.com/bpodgursky/hank-go-client/fixtures"
 	"github.com/bpodgursky/hank-go-client/hank_types"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 	"github.com/curator-go/curator"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"fmt"
@@ -26,13 +25,13 @@ func TestZkWatchedNode(t *testing.T) {
 		t.Fail()
 	}
 
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 
 	time.Sleep(time.Second)
 
 	wn.Set(ctx, []byte("data1"))
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		val, _ := wn.Get().([]byte)
 		return string(val) == "data1"
 	})
@@ -47,7 +46,7 @@ func TestZkWatchedNode2(t *testing.T) {
 	node, _ := NewBytesWatchedNode(client, curator.PERSISTENT, "/some/path", []byte("0"))
 	node2, _ := LoadBytesWatchedNode(client, "/some/path")
 
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 
 	testData := "Test String"
 	setErr := node.Set(ctx, []byte(testData))
@@ -56,7 +55,7 @@ func TestZkWatchedNode2(t *testing.T) {
 		assert.Fail(t, "Failed")
 	}
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		val := asBytes(node2.Get())
 		if val != nil {
 			return reflect.DeepEqual(string(val), testData)
@@ -74,7 +73,7 @@ func TestUpdateWatchedNode(t *testing.T) {
 	hostData.Domains = make(map[int32]*hank.HostDomainMetadata)
 	hostData.Domains[0] = hank.NewHostDomainMetadata()
 
-	ctx := thriftext.NewThreadCtx()
+	ctx := iface.NewThreadCtx()
 
 	node, _ := NewThriftWatchedNode(client, curator.PERSISTENT, "/some/path", ctx, iface.NewHostAssignmentMetadata, hostData)
 	node2, _ := LoadThriftWatchedNode(client, "/some/path", iface.NewHostAssignmentMetadata)
@@ -85,7 +84,7 @@ func TestUpdateWatchedNode(t *testing.T) {
 		return meta
 	})
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		meta := iface.AsHostAssignmentsMetadata(node2.Get())
 		return meta != nil && len(meta.Domains) == 2
 	})

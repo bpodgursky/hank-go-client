@@ -10,7 +10,6 @@ import (
 	"sync"
 	"testing"
 	"github.com/bpodgursky/hank-go-client/zk_coordinator"
-	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 func Exception() *hank.HankResponse {
@@ -98,29 +97,29 @@ func Key1() []byte {
 	return []byte("1")
 }
 
-func setupHangingServerClient(t *testing.T, ctx *thriftext.ThreadCtx, client curator.CuratorFramework, i int, lock *sync.Mutex) (*CountingHandler, iface.Host, func(), *HostConnection) {
+func setupHangingServerClient(t *testing.T, ctx *iface.ThreadCtx, client curator.CuratorFramework, i int, lock *sync.Mutex) (*CountingHandler, iface.Host, func(), *HostConnection) {
 	handler := &CountingHandler{internal: &HangingResponse{lock: lock}}
 	host, close, conn := setupServerClient(t, handler, ctx, client, i)
 	return handler, host, close, conn
 }
 
-func setupCountingServerClient(t *testing.T, ctx *thriftext.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
+func setupCountingServerClient(t *testing.T, ctx *iface.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
 	handler := &CountingHandler{internal: &ConstValue{val: Val1()}}
 	host, close, conn := setupServerClient(t, handler, ctx, client, i)
 	return handler, host, close, conn
 }
 
-func setupFailingServerClient(t *testing.T, ctx *thriftext.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
+func setupFailingServerClient(t *testing.T, ctx *iface.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
 	handler := &CountingHandler{internal: &FailingValue{}}
 	host, close, conn := setupServerClient(t, handler, ctx, client, i)
 	return handler, host, close, conn
 }
 
-func setupServerClient(t *testing.T, server hank.PartitionServer, ctx *thriftext.ThreadCtx, client curator.CuratorFramework, i int) (iface.Host, func(), *HostConnection) {
+func setupServerClient(t *testing.T, server hank.PartitionServer, ctx *iface.ThreadCtx, client curator.CuratorFramework, i int) (iface.Host, func(), *HostConnection) {
 	host, close := createHostServer(t, ctx, client, i, server)
 
 	conn := NewHostConnection(host, 100, 100, 100, 100)
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return conn.IsServing()
 	})
 
@@ -143,8 +142,8 @@ func byAddress(connections []*HostConnection) map[string][]*HostConnection {
 	return hostConnections
 }
 
-func setUpCoordinator(client curator.CuratorFramework) (*thriftext.ThreadCtx, iface.Domain) {
-	ctx := thriftext.NewThreadCtx()
+func setUpCoordinator(client curator.CuratorFramework) (*iface.ThreadCtx, iface.Domain) {
+	ctx := iface.NewThreadCtx()
 	cdr, _ := zk_coordinator.NewZkCoordinator(client,
 		"/hank/domains",
 		"/hank/ring_groups",
@@ -174,7 +173,7 @@ func TestBothUp(t *testing.T) {
 	//	take one host down, expect all queries on the other
 
 	host2.SetState(ctx, iface.HOST_OFFLINE)
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return h2conn1.IsOffline()
 	})
 
@@ -190,7 +189,7 @@ func TestBothUp(t *testing.T) {
 	//	if both are down, give it a shot anyway
 
 	host1.SetState(ctx, iface.HOST_OFFLINE)
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return h1conn1.IsOffline()
 	})
 
@@ -385,7 +384,7 @@ func TestOneHanging(t *testing.T) {
 
 	}
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return handler1.numGets == 5 &&
 			handler1.numCompletedGets == 5 &&
 			handler2.numGets == 5 &&
@@ -413,7 +412,7 @@ func TestOneHanging(t *testing.T) {
 
 	}
 
-	fixtures.WaitUntilOrDie(t, func() bool {
+	fixtures.WaitUntilOrFail(t, func() bool {
 		return handler1.numGets == 5 &&
 			handler1.numCompletedGets == 5 &&
 			handler2.numGets == 10 &&
