@@ -3,11 +3,6 @@ package iface
 
 import "github.com/bpodgursky/hank-go-client/hank_types"
 
-//  suuuuure
-type Getter func(name string) interface{}
-
-// watched node cast copypasta
-
 func AsDomain(val interface{}) Domain {
 	if val == nil {
 		return nil
@@ -80,9 +75,7 @@ func AsHostDomainPartition(val interface{}) HostDomainPartition {
   return val.(HostDomainPartition)
 }
 
-
-
-//  fuck this fucking braindead language.  this is fucking idiotic.
+//	stupid constructors for a stupid language
 
 func NewDomainGroupMetadata() interface{} {
 	return hank.NewDomainGroupMetadata()

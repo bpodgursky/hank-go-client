@@ -304,8 +304,7 @@ func (p *HankSmartClient) buildNewConnectionCache(
 	newServerToConnections map[string]*HostConnectionPool,
 	newDomainToPartitionToConnections map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool) error {
 
-	//  this is horrible looking, and I'd love to use MultiMap, but I can't  because this horseshit,
-	//  gimp, special-ed language thinks that generics are too dangerous and just gives you fucking crayons
+	//  this is horrible looking, and I'd love to make a MultiMap, but I can't because Go is the short-bus of languages
 	domainToPartToAddresses := make(map[iface.DomainID]map[iface.PartitionID][]*iface.PartitionServerAddress)
 
 	preferredHosts := []string{}
