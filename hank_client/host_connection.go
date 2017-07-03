@@ -7,6 +7,7 @@ import (
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"time"
+	"github.com/bpodgursky/hank-go-client/syncext"
 )
 
 type HostConnection struct {
@@ -23,7 +24,7 @@ type HostConnection struct {
 
 	ctx *iface.ThreadCtx
 
-	lock *TimeoutMutex
+	lock *syncext.TimeoutMutex
 }
 
 func NewHostConnection(
@@ -40,7 +41,7 @@ func NewHostConnection(
 		establishConnectionTimeoutMs: establishConnectionTimeoutMs,
 		queryTimeoutMs:               queryTimeoutMs,
 		bulkQueryTimeoutMs:           bulkQueryTimeoutMs,
-		lock:                         NewMutex(),
+		lock:                         syncext.NewMutex(),
 	}
 
 	host.AddStateChangeListener(&connection)

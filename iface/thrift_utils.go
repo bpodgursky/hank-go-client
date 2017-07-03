@@ -14,7 +14,7 @@ type ThreadCtx struct {
 }
 
 func NewThreadCtx() *ThreadCtx {
-
+	
 	serializer := thrift.NewTSerializer()
 	serializer.Protocol = thrift.NewTCompactProtocol(serializer.Transport)
 

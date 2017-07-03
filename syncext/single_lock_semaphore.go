@@ -1,4 +1,4 @@
-package hank_client
+package syncext
 
 type SingleLockSemaphore struct {
 	c chan struct{}

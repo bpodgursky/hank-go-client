@@ -53,8 +53,6 @@ func CreateHostConnectionPool(connections []*HostConnection, hostShuffleSeed int
 
 }
 
-//	TODO this does not have the intelligent seeding the Java client has, because there's no easy equivalent of passing
-//	around a seeded Random
 func shuffle(slice []string, hostShuffleSeed int64) {
 	seededRand := rand.New(rand.NewSource(hostShuffleSeed))
 

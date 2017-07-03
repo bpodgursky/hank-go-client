@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 	"github.com/karlseguin/ccache"
+	"github.com/bpodgursky/hank-go-client/syncext"
 )
 
 type RequestCounters struct {
@@ -52,7 +53,7 @@ type HankSmartClient struct {
 	cache    *ccache.Cache
 	counters *RequestCounters
 
-	cacheUpdateLock *SingleLockSemaphore
+	cacheUpdateLock *syncext.SingleLockSemaphore
 }
 
 func NewHankSmartClient(
@@ -81,7 +82,7 @@ func NewHankSmartClient(
 		cache = ccache.New(ccache.Configure().MaxSize(int64(options.ResponseCacheNumItems)))
 	}
 
-	connectionCacheLock := NewSingleLockSemaphore()
+	connectionCacheLock := syncext.NewSingleLockSemaphore()
 
 	client := &HankSmartClient{coordinator,
 														 ringGroup,
@@ -109,7 +110,7 @@ func (p *HankSmartClient) OnChange() {
 	p.cacheUpdateLock.Release()
 }
 
-func (p *HankSmartClient) updateLoop(stopping *bool, listenerLock *SingleLockSemaphore) {
+func (p *HankSmartClient) updateLoop(stopping *bool, listenerLock *syncext.SingleLockSemaphore) {
 
 	ctx := iface.NewThreadCtx()
 

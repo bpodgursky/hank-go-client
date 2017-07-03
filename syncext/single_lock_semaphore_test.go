@@ -1,4 +1,4 @@
-package hank_client
+package syncext
 
 import (
 	"testing"
