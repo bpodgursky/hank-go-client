@@ -2,15 +2,15 @@ package hank_client
 
 import (
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/coordinator"
 	"github.com/bpodgursky/hank-go-client/fixtures"
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/curator-go/curator"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
+	"github.com/bpodgursky/hank-go-client/zk_coordinator"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 func Exception() *hank.HankResponse {
@@ -98,25 +98,25 @@ func Key1() []byte {
 	return []byte("1")
 }
 
-func setupHangingServerClient(t *testing.T, ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int, lock *sync.Mutex) (*CountingHandler, iface.Host, func(), *HostConnection) {
+func setupHangingServerClient(t *testing.T, ctx *thriftext.ThreadCtx, client curator.CuratorFramework, i int, lock *sync.Mutex) (*CountingHandler, iface.Host, func(), *HostConnection) {
 	handler := &CountingHandler{internal: &HangingResponse{lock: lock}}
 	host, close, conn := setupServerClient(t, handler, ctx, client, i)
 	return handler, host, close, conn
 }
 
-func setupCountingServerClient(t *testing.T, ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
+func setupCountingServerClient(t *testing.T, ctx *thriftext.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
 	handler := &CountingHandler{internal: &ConstValue{val: Val1()}}
 	host, close, conn := setupServerClient(t, handler, ctx, client, i)
 	return handler, host, close, conn
 }
 
-func setupFailingServerClient(t *testing.T, ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
+func setupFailingServerClient(t *testing.T, ctx *thriftext.ThreadCtx, client curator.CuratorFramework, i int) (*CountingHandler, iface.Host, func(), *HostConnection) {
 	handler := &CountingHandler{internal: &FailingValue{}}
 	host, close, conn := setupServerClient(t, handler, ctx, client, i)
 	return handler, host, close, conn
 }
 
-func setupServerClient(t *testing.T, server hank.PartitionServer, ctx *serializers.ThreadCtx, client curator.CuratorFramework, i int) (iface.Host, func(), *HostConnection) {
+func setupServerClient(t *testing.T, server hank.PartitionServer, ctx *thriftext.ThreadCtx, client curator.CuratorFramework, i int) (iface.Host, func(), *HostConnection) {
 	host, close := createHostServer(t, ctx, client, i, server)
 
 	conn, _ := NewHostConnection(host, 100, 100, 100, 100)
@@ -143,9 +143,9 @@ func byAddress(connections []*HostConnection) map[string][]*HostConnection {
 	return hostConnections
 }
 
-func setUpCoordinator(client curator.CuratorFramework) (*serializers.ThreadCtx, iface.Domain) {
-	ctx := serializers.NewThreadCtx()
-	cdr, _ := coordinator.NewZkCoordinator(client,
+func setUpCoordinator(client curator.CuratorFramework) (*thriftext.ThreadCtx, iface.Domain) {
+	ctx := thriftext.NewThreadCtx()
+	cdr, _ := zk_coordinator.NewZkCoordinator(client,
 		"/hank/domains",
 		"/hank/ring_groups",
 		"/hank/domain_groups",

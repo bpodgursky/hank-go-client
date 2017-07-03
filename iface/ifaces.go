@@ -2,22 +2,64 @@ package iface
 
 import (
 	"strconv"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/hank_types"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
+
+
+type DataListener interface {
+	OnDataChange(newVal interface{}) error
+}
+
+type DataChangeNotifier interface {
+	OnChange()
+}
+
+type NoOp struct{}
+
+func (t *NoOp) OnDataChange(newVal interface{}) error { return nil }
+func (t *NoOp) OnChange()                             {}
+
+type Adapter struct {
+	Notifier DataChangeNotifier
+}
+
+func (t *Adapter) OnDataChange(newVal interface{}) error {
+	t.Notifier.OnChange()
+	return nil
+}
+
+type MultiNotifier struct {
+	clientListeners []DataChangeNotifier
+}
+
+func NewMultiNotifier() *MultiNotifier {
+	return &MultiNotifier{clientListeners: []DataChangeNotifier{}}
+}
+
+func (p *MultiNotifier) AddClient(notifier DataChangeNotifier) {
+	p.clientListeners = append(p.clientListeners, notifier)
+}
+
+func (p *MultiNotifier) OnChange() {
+	for _, listener := range p.clientListeners {
+		listener.OnChange()
+	}
+}
+
 
 type Coordinator interface {
 	GetRingGroup(ringGroupName string) RingGroup
 
-	AddDomainGroup(ctx *serializers.ThreadCtx, name string) (DomainGroup, error)
+	AddDomainGroup(ctx *thriftext.ThreadCtx, name string) (DomainGroup, error)
 
 	GetDomainGroup(domainGroupName string) DomainGroup
 
 	GetRingGroups() []RingGroup
 
-	GetDomainById(ctx *serializers.ThreadCtx, domainId DomainID) (Domain, error)
+	GetDomainById(ctx *thriftext.ThreadCtx, domainId DomainID) (Domain, error)
 
-	AddDomain(ctx *serializers.ThreadCtx,
+	AddDomain(ctx *thriftext.ThreadCtx,
 		domainName string,
 		numParts int32,
 		storageEngineFactoryName string,
@@ -34,9 +76,9 @@ type Coordinator interface {
 type DomainGroup interface {
 	GetName() string
 
-	SetDomainVersions(ctx *serializers.ThreadCtx, flags map[DomainID]VersionID) error
+	SetDomainVersions(ctx *thriftext.ThreadCtx, flags map[DomainID]VersionID) error
 
-	GetDomainVersions(ctx *serializers.ThreadCtx) []*DomainAndVersion
+	GetDomainVersions(ctx *thriftext.ThreadCtx) []*DomainAndVersion
 
 	GetDomainVersion(domainID DomainID) *DomainAndVersion
 
@@ -45,9 +87,9 @@ type DomainGroup interface {
 type Ring interface {
 	//  stub
 
-	AddHost(ctx *serializers.ThreadCtx, hostName string, port int, hostFlags []string) (Host, error)
+	AddHost(ctx *thriftext.ThreadCtx, hostName string, port int, hostFlags []string) (Host, error)
 
-	GetHosts(ctx *serializers.ThreadCtx) []Host
+	GetHosts(ctx *thriftext.ThreadCtx) []Host
 
 }
 
@@ -56,15 +98,15 @@ type RingGroup interface {
 
 	GetRings() []Ring
 
-	AddRing(ctx *serializers.ThreadCtx, ringNum RingID) (Ring, error)
+	AddRing(ctx *thriftext.ThreadCtx, ringNum RingID) (Ring, error)
 
 	GetRing(ringNum RingID) Ring
 
-	RegisterClient(ctx *serializers.ThreadCtx, metadata *hank.ClientMetadata) error
+	RegisterClient(ctx *thriftext.ThreadCtx, metadata *hank.ClientMetadata) error
 
 	GetClients() []*hank.ClientMetadata
 
-	AddListener(listener serializers.DataChangeNotifier)
+	AddListener(listener DataChangeNotifier)
 
 	//	stub
 }
@@ -79,23 +121,23 @@ const (
 )
 
 type Host interface {
-	GetMetadata(ctx *serializers.ThreadCtx) *hank.HostMetadata
+	GetMetadata(ctx *thriftext.ThreadCtx) *hank.HostMetadata
 
-	GetAssignedDomains(ctx *serializers.ThreadCtx) []HostDomain
+	GetAssignedDomains(ctx *thriftext.ThreadCtx) []HostDomain
 
-	GetEnvironmentFlags(ctx *serializers.ThreadCtx) map[string]string
+	GetEnvironmentFlags(ctx *thriftext.ThreadCtx) map[string]string
 
-	SetEnvironmentFlags(ctx *serializers.ThreadCtx, flags map[string]string) error
+	SetEnvironmentFlags(ctx *thriftext.ThreadCtx, flags map[string]string) error
 
-	AddDomain(ctx *serializers.ThreadCtx, domain Domain) (HostDomain, error)
+	AddDomain(ctx *thriftext.ThreadCtx, domain Domain) (HostDomain, error)
 
 	GetAddress() *PartitionServerAddress
 
-	GetHostDomain(ctx *serializers.ThreadCtx, domainId DomainID) HostDomain
+	GetHostDomain(ctx *thriftext.ThreadCtx, domainId DomainID) HostDomain
 
-	AddStateChangeListener(listener serializers.DataListener)
+	AddStateChangeListener(listener DataListener)
 
-	SetState(ctx *serializers.ThreadCtx, state HostState) error
+	SetState(ctx *thriftext.ThreadCtx, state HostState) error
 
 	GetState() HostState
 
@@ -125,15 +167,15 @@ type HostDomainPartition interface {
 
 	GetCurrentDomainVersion() VersionID
 
-	SetCurrentDomainVersion(ctx *serializers.ThreadCtx, version VersionID) error
+	SetCurrentDomainVersion(ctx *thriftext.ThreadCtx, version VersionID) error
 
 	IsDeletable() bool
 }
 
 type HostDomain interface {
-	GetDomain(ctx *serializers.ThreadCtx, coordinator Coordinator) (Domain, error)
+	GetDomain(ctx *thriftext.ThreadCtx, coordinator Coordinator) (Domain, error)
 
-	AddPartition(ctx *serializers.ThreadCtx, partNum PartitionID) HostDomainPartition
+	AddPartition(ctx *thriftext.ThreadCtx, partNum PartitionID) HostDomainPartition
 
 	GetPartitions() []HostDomainPartition
 }

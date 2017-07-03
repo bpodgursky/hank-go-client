@@ -1,4 +1,4 @@
-package coordinator
+package zk_coordinator
 
 import (
 	"github.com/aviddiviner/go-murmur"

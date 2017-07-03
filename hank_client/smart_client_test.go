@@ -2,37 +2,24 @@ package hank_client
 
 import (
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/coordinator"
 	"github.com/bpodgursky/hank-go-client/fixtures"
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/thrift_services"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
-	"math/big"
 	"reflect"
 	"testing"
 	"time"
+	"github.com/bpodgursky/hank-go-client/zk_coordinator"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
-
-func TestAsdf(t *testing.T) {
-
-	uuid := uuid.NewV4().Bytes()
-	last := uuid[len(uuid)-8:]
-
-	var number big.Int
-	number.SetBytes(last)
-	fmt.Println(number.Int64())
-
-}
 
 func TestSmartClient(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	ctx := serializers.NewThreadCtx()
+	ctx := thriftext.NewThreadCtx()
 
-	coordinator, _ := coordinator.NewZkCoordinator(client,
+	coordinator, _ := zk_coordinator.NewZkCoordinator(client,
 		"/hank/domains",
 		"/hank/ring_groups",
 		"/hank/domain_groups",
@@ -76,9 +63,9 @@ func Val(val string) *hank.HankResponse {
 func TestIt(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	ctx := serializers.NewThreadCtx()
+	ctx := thriftext.NewThreadCtx()
 
-	coord, _ := coordinator.NewZkCoordinator(client,
+	coord, _ := zk_coordinator.NewZkCoordinator(client,
 		"/hank/domains",
 		"/hank/ring_groups",
 		"/hank/domain_groups",
@@ -105,7 +92,7 @@ func TestIt(t *testing.T) {
 	versions[domain0.GetId()] = iface.VersionID(0)
 	dg1.SetDomainVersions(ctx, versions)
 
-	partitioner := &coordinator.Murmur64Partitioner{}
+	partitioner := &zk_coordinator.Murmur64Partitioner{}
 
 	values := make(map[string]string)
 	values["key1"] = "value1"
@@ -265,7 +252,7 @@ func TestIt(t *testing.T) {
 	fixtures.TeardownZookeeper(cluster, client)
 }
 
-func setStateBlocking(t *testing.T, host iface.Host, ctx *serializers.ThreadCtx, state iface.HostState) {
+func setStateBlocking(t *testing.T, host iface.Host, ctx *thriftext.ThreadCtx, state iface.HostState) {
 	host.SetState(ctx, state)
 	fixtures.WaitUntilOrDie(t, func() bool {
 		return host.GetState() == state

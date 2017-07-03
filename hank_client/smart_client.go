@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"math"
 	"os"
 	"strconv"
 	"sync"
 	"time"
 	"github.com/karlseguin/ccache"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 type RequestCounters struct {
@@ -69,7 +69,7 @@ func NewHankSmartClient(
 		return nil, err
 	}
 
-	ctx := serializers.NewThreadCtx()
+	ctx := thriftext.NewThreadCtx()
 	registerErr := ringGroup.RegisterClient(ctx, metadata)
 
 	if registerErr != nil {
@@ -112,7 +112,7 @@ func (p *HankSmartClient) OnChange() {
 
 func (p *HankSmartClient) updateLoop(stopping *bool, listenerLock *SingleLockSemaphore) {
 
-	ctx := serializers.NewThreadCtx()
+	ctx := thriftext.NewThreadCtx()
 
 	for true {
 		listenerLock.Read()
@@ -157,7 +157,7 @@ func GetClientMetadata() (*hank.ClientMetadata, error) {
 	return metadata, nil
 }
 
-func (p *HankSmartClient) updateConnectionCache(ctx *serializers.ThreadCtx) {
+func (p *HankSmartClient) updateConnectionCache(ctx *thriftext.ThreadCtx) {
 	fmt.Println("Loading Hank's smart client metadata cache and connections.")
 
 	newServerToConnections := make(map[string]*HostConnectionPool)
@@ -281,7 +281,7 @@ func (p *HankSmartClient) get(domain iface.Domain, key []byte) (*hank.HankRespon
 
 }
 
-func (p *HankSmartClient) isPreferredHost(ctx *serializers.ThreadCtx, host iface.Host) bool {
+func (p *HankSmartClient) isPreferredHost(ctx *thriftext.ThreadCtx, host iface.Host) bool {
 
 	fmt.Println("Environment flags for host ", host)
 
@@ -300,7 +300,7 @@ func (p *HankSmartClient) isPreferredHost(ctx *serializers.ThreadCtx, host iface
 }
 
 func (p *HankSmartClient) buildNewConnectionCache(
-	ctx *serializers.ThreadCtx,
+	ctx *thriftext.ThreadCtx,
 	newServerToConnections map[string]*HostConnectionPool,
 	newDomainToPartitionToConnections map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool) error {
 

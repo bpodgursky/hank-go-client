@@ -1,4 +1,4 @@
-package watched_structs
+package curatorext
 
 import (
 	"errors"
@@ -6,14 +6,14 @@ import (
 	"github.com/curator-go/curator"
 	"path"
 	"path/filepath"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/cenkalti/backoff"
 	"time"
 	"fmt"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 
-func WaitUntilOrDie(expectTrue func() bool) error {
+func WaitUntilOrErr(expectTrue func() bool) error {
 
 	backoffStrat := backoff.NewExponentialBackOff()
 	backoffStrat.MaxElapsedTime = time.Second * 10
@@ -79,7 +79,7 @@ func SafeEnsureParents(client curator.CuratorFramework, mode curator.CreateMode,
 	return nil
 }
 
-func LoadThrift(ctx *serializers.ThreadCtx, path string, client curator.CuratorFramework, tStruct thrift.TStruct) error {
+func LoadThrift(ctx *thriftext.ThreadCtx, path string, client curator.CuratorFramework, tStruct thrift.TStruct) error {
 	data, err := client.GetData().ForPath(path)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func LoadThrift(ctx *serializers.ThreadCtx, path string, client curator.CuratorF
 	return nil
 }
 
-func CreateEphemeralSequential(root string, framework curator.CuratorFramework) serializers.SetBytes {
+func CreateEphemeralSequential(root string, framework curator.CuratorFramework) thriftext.SetBytes {
 	return func(data []byte) error {
 		_, err := framework.Create().WithMode(curator.EPHEMERAL_SEQUENTIAL).ForPathWithData(root, data)
 		return err

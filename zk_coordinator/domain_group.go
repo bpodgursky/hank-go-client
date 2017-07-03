@@ -1,24 +1,24 @@
-package coordinator
+package zk_coordinator
 
 import (
 	"github.com/curator-go/curator"
 	"path"
-	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/watched_structs"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/hank_types"
+	"github.com/bpodgursky/hank-go-client/thriftext"
+	"github.com/bpodgursky/hank-go-client/curatorext"
 )
 
 type ZkDomainGroup struct {
 	name     string
-	metadata *watched_structs.ZkWatchedNode
+	metadata *curatorext.ZkWatchedNode
 }
 
-func createZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework, name string, rootPath string) (*ZkDomainGroup, error) {
+func createZkDomainGroup(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, name string, rootPath string) (*ZkDomainGroup, error) {
 
 	metadataPath := path.Join(rootPath, name)
 
-	err := watched_structs.AssertEmpty(client, metadataPath)
+	err := curatorext.AssertEmpty(client, metadataPath)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func createZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFrame
 	metadata := hank.NewDomainGroupMetadata()
 	metadata.DomainVersions = make(map[int32]int32)
 
-	node, nodeErr := watched_structs.NewThriftWatchedNode(
+	node, nodeErr := curatorext.NewThriftWatchedNode(
 		client,
 		curator.PERSISTENT,
 		metadataPath,
@@ -42,16 +42,16 @@ func createZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFrame
 	return &ZkDomainGroup{name: name, metadata: node}, nil
 }
 
-func loadZkDomainGroup(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, fullPath string) (interface{}, error) {
+func loadZkDomainGroup(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, fullPath string) (interface{}, error) {
 
 	name := path.Base(fullPath)
 
-	err := watched_structs.AssertExists(client, fullPath)
+	err := curatorext.AssertExists(client, fullPath)
 	if err != nil {
 		return nil, err
 	}
 
-	node, nodeErr := watched_structs.LoadThriftWatchedNode(client, fullPath, iface.NewDomainGroupMetadata)
+	node, nodeErr := curatorext.LoadThriftWatchedNode(client, fullPath, iface.NewDomainGroupMetadata)
 	if nodeErr != nil {
 		return nil, nodeErr
 	}
@@ -65,7 +65,7 @@ func (p *ZkDomainGroup) GetName() string {
 	return p.name
 }
 
-func (p *ZkDomainGroup) GetDomainVersions(ctx *serializers.ThreadCtx) []*iface.DomainAndVersion {
+func (p *ZkDomainGroup) GetDomainVersions(ctx *thriftext.ThreadCtx) []*iface.DomainAndVersion {
 	metadata := iface.AsDomainGroupMetadata(p.metadata.Get())
 
 	versions := []*iface.DomainAndVersion{}
@@ -75,7 +75,7 @@ func (p *ZkDomainGroup) GetDomainVersions(ctx *serializers.ThreadCtx) []*iface.D
 	return versions
 }
 
-func (p *ZkDomainGroup) SetDomainVersions(ctx *serializers.ThreadCtx, versions map[iface.DomainID]iface.VersionID) error {
+func (p *ZkDomainGroup) SetDomainVersions(ctx *thriftext.ThreadCtx, versions map[iface.DomainID]iface.VersionID) error {
 
 	_, err := p.metadata.Update(ctx, func(val interface{}) interface{} {
 		metadata := iface.AsDomainGroupMetadata(val)

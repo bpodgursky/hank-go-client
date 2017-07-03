@@ -1,22 +1,22 @@
-package coordinator
+package zk_coordinator
 
 import (
 	"github.com/curator-go/curator"
 	"path"
-	"github.com/bpodgursky/hank-go-client/watched_structs"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/bpodgursky/hank-go-client/thriftext"
+	"github.com/bpodgursky/hank-go-client/curatorext"
 )
 
 const KEY_DOMAIN_ID_COUNTER string = ".domain_id_counter"
 
 type ZkCoordinator struct {
-	ringGroups   *watched_structs.ZkWatchedMap
-	domainGroups *watched_structs.ZkWatchedMap
-	domains      *watched_structs.ZkWatchedMap
+	ringGroups   *curatorext.ZkWatchedMap
+	domainGroups *curatorext.ZkWatchedMap
+	domains      *curatorext.ZkWatchedMap
 	client       curator.CuratorFramework
 
-	domainIDCounter *watched_structs.ZkWatchedNode
+	domainIDCounter *curatorext.ZkWatchedNode
 }
 
 func NewZkCoordinator(client curator.CuratorFramework,
@@ -24,9 +24,9 @@ func NewZkCoordinator(client curator.CuratorFramework,
 	ringGroupsRoot string,
 	domainGroupsRoot string) (*ZkCoordinator, error) {
 
-	ringGroups, rgError := watched_structs.NewZkWatchedMap(client, ringGroupsRoot, serializers.NewMultiNotifier(), loadZkRingGroup)
-	domainGroups, dgError := watched_structs.NewZkWatchedMap(client, domainGroupsRoot, serializers.NewMultiNotifier(), loadZkDomainGroup)
-	domains, dmError := watched_structs.NewZkWatchedMap(client, domainsRoot, serializers.NewMultiNotifier(), loadZkDomain)
+	ringGroups, rgError := curatorext.NewZkWatchedMap(client, ringGroupsRoot, iface.NewMultiNotifier(), loadZkRingGroup)
+	domainGroups, dgError := curatorext.NewZkWatchedMap(client, domainGroupsRoot, iface.NewMultiNotifier(), loadZkDomainGroup)
+	domains, dmError := curatorext.NewZkWatchedMap(client, domainsRoot, iface.NewMultiNotifier(), loadZkDomain)
 
 	if rgError != nil {
 		return nil, rgError
@@ -55,16 +55,16 @@ func NewZkCoordinator(client curator.CuratorFramework,
 
 }
 
-func getDomainIDCounter(client curator.CuratorFramework, path string) (*watched_structs.ZkWatchedNode, error) {
+func getDomainIDCounter(client curator.CuratorFramework, path string) (*curatorext.ZkWatchedNode, error) {
 	domainCount, err := client.CheckExists().ForPath(path)
 	if err != nil {
 		return nil, err
 	}
 
 	if domainCount != nil {
-		return watched_structs.LoadIntWatchedNode(client, path)
+		return curatorext.LoadIntWatchedNode(client, path)
 	} else {
-		return watched_structs.NewIntWatchedNode(client, curator.PERSISTENT, path, -1)
+		return curatorext.NewIntWatchedNode(client, curator.PERSISTENT, path, -1)
 	}
 }
 
@@ -88,14 +88,14 @@ func (p *ZkCoordinator) GetDomainGroup(name string) iface.DomainGroup {
 	return iface.AsDomainGroup(p.domainGroups.Get(name))
 }
 
-func (p *ZkCoordinator) AddDomainGroup(ctx *serializers.ThreadCtx, name string) (iface.DomainGroup, error) {
+func (p *ZkCoordinator) AddDomainGroup(ctx *thriftext.ThreadCtx, name string) (iface.DomainGroup, error) {
 
 	group, err := createZkDomainGroup(ctx, p.client, name, p.domainGroups.Root)
 	if err != nil {
 		return nil, err
 	}
 
-	err = watched_structs.WaitUntilOrDie(func() bool {
+	err = curatorext.WaitUntilOrErr(func() bool {
 		return p.domainGroups.Contains(name)
 	})
 	if err != nil{
@@ -106,14 +106,14 @@ func (p *ZkCoordinator) AddDomainGroup(ctx *serializers.ThreadCtx, name string) 
 
 }
 
-func (p *ZkCoordinator) AddRingGroup(ctx *serializers.ThreadCtx, name string) (iface.RingGroup, error) {
+func (p *ZkCoordinator) AddRingGroup(ctx *thriftext.ThreadCtx, name string) (iface.RingGroup, error) {
 
 	group, err := createZkRingGroup(ctx, p.client, name, p.ringGroups.Root)
 	if err != nil {
 		return nil, err
 	}
 
-	err = watched_structs.WaitUntilOrDie(func() bool {
+	err = curatorext.WaitUntilOrErr(func() bool {
 		return p.ringGroups.Contains(name)
 	})
 	if err != nil{
@@ -126,7 +126,7 @@ func (p *ZkCoordinator) AddRingGroup(ctx *serializers.ThreadCtx, name string) (i
 	return group, nil
 }
 
-func (p *ZkCoordinator) AddDomain(ctx *serializers.ThreadCtx,
+func (p *ZkCoordinator) AddDomain(ctx *thriftext.ThreadCtx,
 	domainName string,
 	numParts int32,
 	storageEngineFactoryName string,
@@ -150,7 +150,7 @@ func (p *ZkCoordinator) AddDomain(ctx *serializers.ThreadCtx,
 		return nil, err
 	}
 
-	err = watched_structs.WaitUntilOrDie(func() bool {
+	err = curatorext.WaitUntilOrErr(func() bool {
 		return p.domains.Contains(domainName)
 	})
 	if err != nil{
@@ -160,7 +160,7 @@ func (p *ZkCoordinator) AddDomain(ctx *serializers.ThreadCtx,
 	return domain, nil
 }
 
-func (p *ZkCoordinator) getNextDomainID(ctx *serializers.ThreadCtx) (iface.DomainID, error) {
+func (p *ZkCoordinator) getNextDomainID(ctx *thriftext.ThreadCtx) (iface.DomainID, error) {
 
 	val, error := p.domainIDCounter.Update(ctx, func(val interface{}) interface{} {
 		nextID := val.(int)
@@ -175,7 +175,7 @@ func (p *ZkCoordinator) getNextDomainID(ctx *serializers.ThreadCtx) (iface.Domai
 
 }
 
-func (p *ZkCoordinator) GetDomainById(ctx *serializers.ThreadCtx, domainId iface.DomainID) (iface.Domain, error) {
+func (p *ZkCoordinator) GetDomainById(ctx *thriftext.ThreadCtx, domainId iface.DomainID) (iface.Domain, error) {
 
 	for _, inst := range p.domains.Values() {
 		domain := inst.(iface.Domain)

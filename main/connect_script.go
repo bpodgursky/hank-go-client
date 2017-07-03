@@ -5,8 +5,8 @@ import (
 	"github.com/curator-go/curator"
 	"os"
 	"time"
-	"github.com/bpodgursky/hank-go-client/coordinator"
 	"github.com/bpodgursky/hank-go-client/hank_client"
+	"github.com/bpodgursky/hank-go-client/zk_coordinator"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 		return
 	}
 
-	coordinator, coordErr := coordinator.NewZkCoordinator(client, "/hank/domains", "/hank/ring_groups", "/hank/domain_groups")
+	coordinator, coordErr := zk_coordinator.NewZkCoordinator(client, "/hank/domains", "/hank/ring_groups", "/hank/domain_groups")
 	if coordErr != nil {
 		fmt.Println(startErr)
 		return

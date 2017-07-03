@@ -3,22 +3,22 @@ package hank_client
 import (
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/bpodgursky/hank-go-client/coordinator"
 	"github.com/bpodgursky/hank-go-client/fixtures"
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/thrift_services"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 	"time"
+	"github.com/bpodgursky/hank-go-client/zk_coordinator"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 func TestQueryWhenServing(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
-	ctx := serializers.NewThreadCtx()
-	host, err := coordinator.CreateZkHost(ctx, client, &serializers.NoOp{}, "/hank/host/host1", "127.0.0.1", 12345, []string{})
+	ctx := thriftext.NewThreadCtx()
+	host, err := zk_coordinator.CreateZkHost(ctx, client, &iface.NoOp{}, "/hank/host/host1", "127.0.0.1", 12345, []string{})
 	if err != nil {
 		fmt.Println(err)
 		t.Fail()
@@ -81,8 +81,8 @@ func (p *SlowPartitionServerHandler) GetBulk(domain_id int32, keys [][]byte) (r 
 func TestTimeouts(t *testing.T) {
 	cluster, client := fixtures.SetupZookeeper(t)
 
-	ctx := serializers.NewThreadCtx()
-	host, err := coordinator.CreateZkHost(ctx, client, &serializers.NoOp{},"/hank/host/host1", "127.0.0.1", 12345, []string{})
+	ctx := thriftext.NewThreadCtx()
+	host, err := zk_coordinator.CreateZkHost(ctx, client, &iface.NoOp{},"/hank/host/host1", "127.0.0.1", 12345, []string{})
 	if err != nil {
 		fmt.Println(err)
 		t.Fail()

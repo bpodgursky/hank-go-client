@@ -4,15 +4,15 @@ import (
 	"bufio"
 	"encoding/hex"
 	"fmt"
+	"github.com/bpodgursky/hank-go-client/hank_client"
+	"github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/thriftext"
+	"github.com/bpodgursky/hank-go-client/zk_coordinator"
 	"github.com/curator-go/curator"
 	"log"
 	"os"
 	"strings"
 	"time"
-	"github.com/bpodgursky/hank-go-client/serializers"
-	"github.com/bpodgursky/hank-go-client/coordinator"
-	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/hank_client"
 )
 
 func main() {
@@ -21,9 +21,9 @@ func main() {
 	client := curator.NewClient(argsWithoutProg[0], curator.NewRetryNTimes(1, time.Second))
 	client.Start()
 
-	ctx := serializers.NewThreadCtx()
+	ctx := thriftext.NewThreadCtx()
 
-	coordinator, coordErr := coordinator.NewZkCoordinator(client, "/hank/domains", "/hank/ring_groups", "/hank/domain_groups")
+	coordinator, coordErr := zk_coordinator.NewZkCoordinator(client, "/hank/domains", "/hank/ring_groups", "/hank/domain_groups")
 	if coordErr != nil {
 
 		fmt.Println(coordErr)
@@ -68,10 +68,6 @@ func main() {
 			return
 		}
 
-		//TODO get arl type
-		//
-		//ctx.ReadThriftBytes(bytes, )
-
 		val, err := conn.Get(domainId, bytes, false)
 		if err != nil {
 			fmt.Println(err)
@@ -87,6 +83,5 @@ func main() {
 		}
 
 	}
-
 
 }

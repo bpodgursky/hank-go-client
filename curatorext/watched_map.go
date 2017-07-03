@@ -1,13 +1,14 @@
-package watched_structs
+package curatorext
 
 import (
-	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 	"github.com/curator-go/curator"
 	"github.com/curator-go/curator/recipes/cache"
 	"path"
 )
 
-type Loader func(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, path string) (interface{}, error)
+type Loader func(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, path string) (interface{}, error)
 
 type ZkWatchedMap struct {
 	Root string
@@ -16,16 +17,16 @@ type ZkWatchedMap struct {
 	client       curator.CuratorFramework
 	loader       Loader
 	internalData map[string]interface{}
-	listener     []serializers.DataChangeNotifier
+	listener     []iface.DataChangeNotifier
 }
 
 type ChildLoader struct {
 	internalData map[string]interface{}
 	loader       Loader
 	root         string
-	listener     serializers.DataChangeNotifier
+	listener     iface.DataChangeNotifier
 
-	ctx *serializers.ThreadCtx
+	ctx *thriftext.ThreadCtx
 }
 
 func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.TreeCacheEvent) error {
@@ -35,6 +36,7 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 		fallthrough
 	case cache.TreeCacheEventNodeAdded:
 		fullChildPath := event.Data.Path()
+
 		if IsSubdirectory(p.root, fullChildPath) {
 			err := conditionalInsert(p.ctx, client, p.loader, p.listener, p.internalData, fullChildPath)
 			p.listener.OnChange()
@@ -50,21 +52,17 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 
 	return nil
 }
-func conditionalInsert(ctx *serializers.ThreadCtx, client curator.CuratorFramework, loader Loader, listener serializers.DataChangeNotifier, internalData map[string]interface{}, fullChildPath string) error {
+func conditionalInsert(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, loader Loader, listener iface.DataChangeNotifier, internalData map[string]interface{}, fullChildPath string) error {
 
 	newKey := path.Base(fullChildPath)
 
-	if _, ok := internalData[newKey]; !ok {
+	item, err := loader(ctx, client, listener, fullChildPath)
+	if err != nil {
+		return err
+	}
 
-		item, err := loader(ctx, client, listener, fullChildPath)
-		if err != nil {
-			return err
-		}
-
-		if item != nil {
-			internalData[newKey] = item
-		}
-
+	if item != nil {
+		internalData[newKey] = item
 	}
 
 	return nil
@@ -73,7 +71,7 @@ func conditionalInsert(ctx *serializers.ThreadCtx, client curator.CuratorFramewo
 func NewZkWatchedMap(
 	client curator.CuratorFramework,
 	root string,
-	listener serializers.DataChangeNotifier,
+	listener iface.DataChangeNotifier,
 	loader Loader) (*ZkWatchedMap, error) {
 
 	internalData := make(map[string]interface{})
@@ -88,7 +86,7 @@ func NewZkWatchedMap(
 		internalData: internalData,
 		loader:       loader,
 		root:         root,
-		ctx:          serializers.NewThreadCtx(),
+		ctx:          thriftext.NewThreadCtx(),
 		listener:     listener,
 	})
 
@@ -104,7 +102,7 @@ func NewZkWatchedMap(
 		return nil, err
 	}
 
-	ctx := serializers.NewThreadCtx()
+	ctx := thriftext.NewThreadCtx()
 	for _, element := range initialChildren {
 		err := conditionalInsert(ctx, client, loader, listener, internalData, path.Join(root, element))
 		if err != nil {
@@ -128,7 +126,7 @@ func (p *ZkWatchedMap) Get(key string) interface{} {
 
 //  TODO these methods are inefficient;  is there an equivalent to ImmutableMap?
 
-func (p *ZkWatchedMap) Contains(key string) bool{
+func (p *ZkWatchedMap) Contains(key string) bool {
 	_, ok := p.internalData[key]
 	return ok
 }

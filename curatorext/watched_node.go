@@ -1,28 +1,29 @@
-package watched_structs
+package curatorext
 
 import (
 	"errors"
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/cenkalti/backoff"
 	"github.com/curator-go/curator"
 	"github.com/curator-go/curator/recipes/cache"
 	"github.com/samuel/go-zookeeper/zk"
 	"time"
+	"github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 type Constructor func() interface{}
 
-type Deserializer func(ctx *serializers.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error)
-type Serializer func(ctx *serializers.ThreadCtx, val interface{}) ([]byte, error)
+type Deserializer func(ctx *thriftext.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error)
+type Serializer func(ctx *thriftext.ThreadCtx, val interface{}) ([]byte, error)
 
 type ZkWatchedNode struct {
 	node        *cache.TreeCache
 	client      curator.CuratorFramework
 	path        string
 	constructor Constructor
-	ctx         *serializers.ThreadCtx
-	listeners   []serializers.DataListener
+	ctx         *thriftext.ThreadCtx
+	listeners   []iface.DataListener
 
 	serializer   Serializer
 	deserializer Deserializer
@@ -99,9 +100,9 @@ func NewZkWatchedNode(
 func LoadZkWatchedNode(client curator.CuratorFramework, path string, constructor Constructor, serializer Serializer, deserializer Deserializer) (*ZkWatchedNode, error) {
 
 	//  TODO we might need a pool of these -- evaluate in production.  in a more civilized world, we'd just use a ThreadLocal
-	ctx := serializers.NewThreadCtx()
+	ctx := thriftext.NewThreadCtx()
 
-	watchedNode := &ZkWatchedNode{client: client, path: path, constructor: constructor, ctx: ctx, listeners: []serializers.DataListener{}, serializer: serializer, deserializer: deserializer}
+	watchedNode := &ZkWatchedNode{client: client, path: path, constructor: constructor, ctx: ctx, listeners: []iface.DataListener{}, serializer: serializer, deserializer: deserializer}
 
 	node := cache.NewTreeCache(client, path, cache.DefaultTreeCacheSelector).
 		SetMaxDepth(0).
@@ -137,7 +138,7 @@ func (p *ZkWatchedNode) Get() interface{} {
 	return p.value
 }
 
-func (p *ZkWatchedNode) Set(ctx *serializers.ThreadCtx,
+func (p *ZkWatchedNode) Set(ctx *thriftext.ThreadCtx,
 	value interface{}) error {
 
 	bytes, err := p.serializer(ctx, value)
@@ -149,14 +150,14 @@ func (p *ZkWatchedNode) Set(ctx *serializers.ThreadCtx,
 	return err
 }
 
-func (p *ZkWatchedNode) AddListener(listener serializers.DataListener) {
+func (p *ZkWatchedNode) AddListener(listener iface.DataListener) {
 	p.listeners = append(p.listeners, listener)
 }
 
 // Note: update() should not modify its argument
 type Updater func(interface{}) interface{}
 
-func (p *ZkWatchedNode) Update(ctx *serializers.ThreadCtx, updater Updater) (interface{}, error) {
+func (p *ZkWatchedNode) Update(ctx *thriftext.ThreadCtx, updater Updater) (interface{}, error) {
 
 	backoffStrat := backoff.NewExponentialBackOff()
 	backoffStrat.MaxElapsedTime = time.Second * 10

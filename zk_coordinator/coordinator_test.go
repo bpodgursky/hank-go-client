@@ -1,4 +1,4 @@
-package coordinator
+package zk_coordinator
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 	"github.com/bpodgursky/hank-go-client/fixtures"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"github.com/bpodgursky/hank-go-client/iface"
 )
 
@@ -18,7 +17,7 @@ func TestZkCoordinator(t *testing.T) {
 	zkCoordinator, err1 := createCoordinator(client)
 	zkCoordinator3, err2 := createCoordinator(client)
 
-	ctx := serializers.NewThreadCtx()
+	ctx := thriftext.NewThreadCtx()
 
 	if err1 != nil {
 		assert.Fail(t, "Error initializing coordinator 1")

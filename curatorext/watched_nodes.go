@@ -1,15 +1,15 @@
-package watched_structs
+package curatorext
 
 import (
 	"git.apache.org/thrift.git/lib/go/thrift"
 	"github.com/curator-go/curator"
 	"strconv"
-	"github.com/bpodgursky/hank-go-client/serializers"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 //  thrift
 
-func TDeserializer(ctx *serializers.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error) {
+func TDeserializer(ctx *thriftext.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error) {
 	inst := constructor()
 	err := ctx.ReadThriftBytes(raw, inst.(thrift.TStruct))
 	if err != nil {
@@ -18,7 +18,7 @@ func TDeserializer(ctx *serializers.ThreadCtx, raw []byte, constructor Construct
 	return inst, nil
 }
 
-func TSerializer(ctx *serializers.ThreadCtx, val interface{}) ([]byte, error) {
+func TSerializer(ctx *thriftext.ThreadCtx, val interface{}) ([]byte, error) {
 	bytes, err := ctx.ToBytes(val.(thrift.TStruct))
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func LoadThriftWatchedNode(client curator.CuratorFramework,
 func NewThriftWatchedNode(client curator.CuratorFramework,
 	mode curator.CreateMode,
 	path string,
-	ctx *serializers.ThreadCtx,
+	ctx *thriftext.ThreadCtx,
 	constructor Constructor,
 	initialValue thrift.TStruct) (*ZkWatchedNode, error) {
 
@@ -50,11 +50,11 @@ func NewThriftWatchedNode(client curator.CuratorFramework,
 //  raw bytes
 
 //  just casting
-func ByteArraySerializer(ctx *serializers.ThreadCtx, val interface{}) ([]byte, error) {
+func ByteArraySerializer(ctx *thriftext.ThreadCtx, val interface{}) ([]byte, error) {
 	return val.([]byte), nil
 }
 
-func ByteArrayDeserializer(ctx *serializers.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error) {
+func ByteArrayDeserializer(ctx *thriftext.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error) {
 	return raw, nil
 }
 
@@ -68,11 +68,11 @@ func NewBytesWatchedNode(client curator.CuratorFramework, mode curator.CreateMod
 
 //  int
 
-func IntSerializer(ctx *serializers.ThreadCtx, val interface{}) ([]byte, error) {
+func IntSerializer(ctx *thriftext.ThreadCtx, val interface{}) ([]byte, error) {
 	return []byte(strconv.Itoa(val.(int))), nil
 }
 
-func IntDeserializer(ctx *serializers.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error) {
+func IntDeserializer(ctx *thriftext.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error) {
 	return strconv.Atoi(string(raw))
 }
 
@@ -91,11 +91,11 @@ func NewIntWatchedNode(client curator.CuratorFramework, mode curator.CreateMode,
 
 //	string
 
-func StringSerializer(ctx *serializers.ThreadCtx, val interface{}) ([]byte, error){
+func StringSerializer(ctx *thriftext.ThreadCtx, val interface{}) ([]byte, error){
 	return []byte(val.(string)), nil
 }
 
-func StringDeserializer(ctx *serializers.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error){
+func StringDeserializer(ctx *thriftext.ThreadCtx, raw []byte, constructor Constructor) (interface{}, error){
 	return string(raw), nil
 }
 

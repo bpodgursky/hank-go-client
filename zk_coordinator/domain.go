@@ -1,25 +1,25 @@
-package coordinator
+package zk_coordinator
 
 import (
   "github.com/curator-go/curator"
   "path"
-  "github.com/bpodgursky/hank-go-client/watched_structs"
-  "github.com/bpodgursky/hank-go-client/serializers"
   "github.com/bpodgursky/hank-go-client/iface"
   "github.com/bpodgursky/hank-go-client/hank_types"
   "strings"
+  "github.com/bpodgursky/hank-go-client/thriftext"
+  "github.com/bpodgursky/hank-go-client/curatorext"
 )
 
 type ZkDomain struct {
   name string
 
-  metadata *watched_structs.ZkWatchedNode
+  metadata *curatorext.ZkWatchedNode
 
   //  temp
   partitioner iface.Partitioner
 }
 
-func createZkDomain(ctx *serializers.ThreadCtx,
+func createZkDomain(ctx *thriftext.ThreadCtx,
   root string,
   name string,
   id iface.DomainID,
@@ -40,7 +40,7 @@ func createZkDomain(ctx *serializers.ThreadCtx,
 
   //  TODO other metadata
 
-  node, nodeErr := watched_structs.NewThriftWatchedNode(
+  node, nodeErr := curatorext.NewThriftWatchedNode(
     client,
     curator.PERSISTENT,
     root,
@@ -73,12 +73,12 @@ func (p *ZkDomain) GetPartitioner() iface.Partitioner{
 }
 
 
-func loadZkDomain(ctx *serializers.ThreadCtx, client curator.CuratorFramework, listener serializers.DataChangeNotifier, root string) (interface{}, error) {
+func loadZkDomain(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, root string) (interface{}, error) {
   name := path.Base(root)
 
   if path.Base(root) != KEY_DOMAIN_ID_COUNTER {
 
-    node, err := watched_structs.LoadThriftWatchedNode(client, root, iface.NewDomainMetadata)
+    node, err := curatorext.LoadThriftWatchedNode(client, root, iface.NewDomainMetadata)
     if err != nil {
       return nil, err
     }

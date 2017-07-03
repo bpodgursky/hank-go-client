@@ -1,50 +1,9 @@
-package serializers
+package thriftext
 
 import (
 	"sync"
 	"git.apache.org/thrift.git/lib/go/thrift"
 )
-
-//	TODO probably not the right package name
-type DataListener interface {
-	OnDataChange(newVal interface{}) error
-}
-
-type DataChangeNotifier interface {
-	OnChange()
-}
-
-type NoOp struct{}
-
-func (t *NoOp) OnDataChange(newVal interface{}) error { return nil }
-func (t *NoOp) OnChange()                             {}
-
-type Adapter struct {
-	Notifier DataChangeNotifier
-}
-
-func (t *Adapter) OnDataChange(newVal interface{}) error {
-	t.Notifier.OnChange()
-	return nil
-}
-
-type MultiNotifier struct {
-	clientListeners []DataChangeNotifier
-}
-
-func NewMultiNotifier() *MultiNotifier {
-	return &MultiNotifier{clientListeners: []DataChangeNotifier{}}
-}
-
-func (p *MultiNotifier) AddClient(notifier DataChangeNotifier) {
-	p.clientListeners = append(p.clientListeners, notifier)
-}
-
-func (p *MultiNotifier) OnChange() {
-	for _, listener := range p.clientListeners {
-		listener.OnChange()
-	}
-}
 
 type ThreadCtx struct {
 	serializer   *thrift.TSerializer

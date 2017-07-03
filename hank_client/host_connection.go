@@ -6,8 +6,8 @@ import (
 	"git.apache.org/thrift.git/lib/go/thrift"
 	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/serializers"
 	"time"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 type HostConnection struct {
@@ -22,7 +22,7 @@ type HostConnection struct {
 	socket *thrift.TSocket
 	client *hank.PartitionServerClient
 
-	ctx *serializers.ThreadCtx
+	ctx *thriftext.ThreadCtx
 
 	lock *TimeoutMutex
 }

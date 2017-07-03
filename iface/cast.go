@@ -6,9 +6,6 @@ import "github.com/bpodgursky/hank-go-client/hank_types"
 //  suuuuure
 type Getter func(name string) interface{}
 
-//  this file is the horrifying result of not having generics, as far as I can tell.  is there any way I can avoid
-//  declaring this for every single thrift type I want?  maybe we can template and autogenerate it?
-
 // watched node cast copypasta
 
 func AsDomain(val interface{}) Domain {
