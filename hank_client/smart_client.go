@@ -56,7 +56,7 @@ type HankSmartClient struct {
 	cacheUpdateLock *syncext.SingleLockSemaphore
 }
 
-func NewHankSmartClient(
+func New(
 	coordinator iface.Coordinator,
 	ringGroupName string,
 	options *hankSmartClientOptions) (*HankSmartClient, error) {

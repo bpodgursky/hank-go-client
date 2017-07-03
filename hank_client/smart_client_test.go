@@ -32,8 +32,8 @@ func TestSmartClient(t *testing.T) {
 	options := NewHankSmartClientOptions().
 		SetNumConnectionsPerHost(2)
 
-	smartClient, _ := NewHankSmartClient(coordinator, "group1", options)
-	smartClient2, _ := NewHankSmartClient(coordinator, "group1", options)
+	smartClient, _ := New(coordinator, "group1", options)
+	smartClient2, _ := New(coordinator, "group1", options)
 
 	fixtures.WaitUntilOrFail(t, func() bool {
 		return len(rg.GetClients()) == 2
@@ -120,7 +120,7 @@ func TestIt(t *testing.T) {
 		SetNumConnectionsPerHost(2).
 		SetQueryTimeoutMs(100)
 
-	smartClient, err := NewHankSmartClient(coord, "rg1", options)
+	smartClient, err := New(coord, "rg1", options)
 
 	//	check each record can be found
 	for key, value := range values {
@@ -186,7 +186,7 @@ func TestIt(t *testing.T) {
 		SetQueryTimeoutMs(100).
 		SetResponseCacheExpiryTime(time.Second)
 
-	cachingClient, err := NewHankSmartClient(coord, "rg1", cachingOptions)
+	cachingClient, err := New(coord, "rg1", cachingOptions)
 
 	//	query once
 	val, err := cachingClient.Get(domain1.GetName(), []byte("key1"))

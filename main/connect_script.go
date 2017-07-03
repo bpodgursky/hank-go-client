@@ -5,8 +5,8 @@ import (
 	"github.com/curator-go/curator"
 	"os"
 	"time"
-	"github.com/bpodgursky/hank-go-client/hank_client"
 	"github.com/bpodgursky/hank-go-client/zk_coordinator"
+	"github.com/bpodgursky/hank-go-client/hank_client"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	options := hank_client.NewHankSmartClientOptions().
 		SetNumConnectionsPerHost(2)
 
-	smartClient, clientErr := hank_client.NewHankSmartClient(coordinator, "spruce-aws", options)
+	smartClient, clientErr := hank_client.New(coordinator, "spruce-aws", options)
 	if clientErr != nil {
 		fmt.Println(clientErr)
 		return
