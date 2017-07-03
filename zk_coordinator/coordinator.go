@@ -95,9 +95,7 @@ func (p *ZkCoordinator) AddDomainGroup(ctx *thriftext.ThreadCtx, name string) (i
 		return nil, err
 	}
 
-	err = curatorext.WaitUntilOrErr(func() bool {
-		return p.domainGroups.Contains(name)
-	})
+	err = p.domainGroups.WaitUntilContains(name)
 	if err != nil{
 		return nil, err
 	}
@@ -113,15 +111,10 @@ func (p *ZkCoordinator) AddRingGroup(ctx *thriftext.ThreadCtx, name string) (ifa
 		return nil, err
 	}
 
-	err = curatorext.WaitUntilOrErr(func() bool {
-		return p.ringGroups.Contains(name)
-	})
+	err = p.ringGroups.WaitUntilContains(name)
 	if err != nil{
 		return nil, err
 	}
-
-	//	TODO clean up
-	p.ringGroups.Put(name, group)
 
 	return group, nil
 }
@@ -150,9 +143,7 @@ func (p *ZkCoordinator) AddDomain(ctx *thriftext.ThreadCtx,
 		return nil, err
 	}
 
-	err = curatorext.WaitUntilOrErr(func() bool {
-		return p.domains.Contains(domainName)
-	})
+	err = p.domains.WaitUntilContains(domainName)
 	if err != nil{
 		return nil, err
 	}

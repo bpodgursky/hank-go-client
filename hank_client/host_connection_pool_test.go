@@ -119,7 +119,7 @@ func setupFailingServerClient(t *testing.T, ctx *thriftext.ThreadCtx, client cur
 func setupServerClient(t *testing.T, server hank.PartitionServer, ctx *thriftext.ThreadCtx, client curator.CuratorFramework, i int) (iface.Host, func(), *HostConnection) {
 	host, close := createHostServer(t, ctx, client, i, server)
 
-	conn, _ := NewHostConnection(host, 100, 100, 100, 100)
+	conn := NewHostConnection(host, 100, 100, 100, 100)
 	fixtures.WaitUntilOrDie(t, func() bool {
 		return conn.IsServing()
 	})
@@ -441,12 +441,12 @@ func TestConsistentHashing(t *testing.T) {
 
 		numHits := 0
 
-		poolA, _ := NewHostConnectionPool(byAddress([]*HostConnection{h1conn1, h2conn1}), int32(i), []string{
+		poolA, _ := NewHostConnectionPool(byAddress([]*HostConnection{h1conn1, h2conn1}), int64(i), []string{
 			host1.GetAddress().Print(),
 			host2.GetAddress().Print(),
 		})
 
-		poolB, _ := NewHostConnectionPool(byAddress([]*HostConnection{h1conn1, h2conn1}), int32(i), []string{
+		poolB, _ := NewHostConnectionPool(byAddress([]*HostConnection{h1conn1, h2conn1}), int64(i), []string{
 			host1.GetAddress().Print(),
 			host2.GetAddress().Print(),
 		})

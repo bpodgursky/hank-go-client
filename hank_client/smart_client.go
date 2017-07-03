@@ -85,15 +85,15 @@ func NewHankSmartClient(
 	connectionCacheLock := NewSingleLockSemaphore()
 
 	client := &HankSmartClient{coordinator,
-		ringGroup,
-		options,
-		make(map[string]*iface.PartitionServerAddress),
-		make(map[string]*HostConnectionPool),
-		make(map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool),
-		&sync.Mutex{},
-		cache,
-		NewRequestCounters(),
-		connectionCacheLock,
+														 ringGroup,
+														 options,
+														 make(map[string]*iface.PartitionServerAddress),
+														 make(map[string]*HostConnectionPool),
+														 make(map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool),
+														 &sync.Mutex{},
+														 cache,
+														 NewRequestCounters(),
+														 connectionCacheLock,
 	}
 
 	client.updateConnectionCache(ctx)
@@ -227,13 +227,13 @@ func (p *HankSmartClient) get(domain iface.Domain, key []byte) (*hank.HankRespon
 	}
 
 	domainID := domain.GetId()
-	entry := strconv.Itoa(int(domainID)) + "-"+string(key)
+	entry := strconv.Itoa(int(domainID)) + "-" + string(key)
 
 	var val interface{}
 
 	if p.cache != nil {
 		item := p.cache.Get(entry)
-		if item !=nil && !item.Expired() {
+		if item != nil && !item.Expired() {
 			val = item.Value()
 		}
 	}
@@ -250,18 +250,21 @@ func (p *HankSmartClient) get(domain iface.Domain, key []byte) (*hank.HankRespon
 		keyHash := partitioner.Partition(key, math.MaxInt32)
 
 		p.connectionLock.Lock()
-		pools := p.domainToPartToConnections[domainID]
+		parts := p.domainToPartToConnections[domainID]
 		p.connectionLock.Unlock()
 
-		if pools == nil {
+		if parts == nil {
 			fmt.Printf("Could not find domain to partition map for domain %v (id: %v)]\n", domain.GetName(), domainID)
 			return noReplica(), nil
 		}
 
-		pool := pools[iface.PartitionID(partition)]
+		pool := parts[iface.PartitionID(partition)]
 
 		if pool == nil {
 			fmt.Printf("Could not find list of hosts for domain %v, partition %v\n", domain.GetName(), partition)
+
+			fmt.Println(parts)
+
 			return noReplica(), nil
 		}
 
@@ -376,7 +379,7 @@ func (p *HankSmartClient) buildNewConnectionCache(
 
 				for i := 1; i <= int(opts.NumConnectionsPerHost); i++ {
 
-					connection, err := NewHostConnection(
+					connection := NewHostConnection(
 						host,
 						opts.TryLockTimeoutMs,
 						opts.EstablishConnectionTimeoutMs,
@@ -384,13 +387,8 @@ func (p *HankSmartClient) buildNewConnectionCache(
 						opts.BulkQueryTimeoutMs,
 					)
 
-					//	TODO not totally sure what we should do on errors here.  check original impl.
-					if err != nil {
-						fmt.Println("Error creating host connection", err)
-					} else {
-						host.AddStateChangeListener(connection)
-						hostConnections = append(hostConnections, connection)
-					}
+					host.AddStateChangeListener(connection)
+					hostConnections = append(hostConnections, connection)
 
 				}
 
@@ -427,6 +425,6 @@ func (p *HankSmartClient) buildNewConnectionCache(
 	return nil
 }
 
-func getHostListShuffleSeed(domainId iface.DomainID, partitionId iface.PartitionID) int32 {
-	return (int32(domainId) + 1) * (int32(partitionId) + 1)
+func getHostListShuffleSeed(domainId iface.DomainID, partitionId iface.PartitionID) int64 {
+	return (int64(domainId) + 1) * (int64(partitionId) + 1)
 }

@@ -67,10 +67,7 @@ func (p *ObjLoader) ChildEvent(client curator.CuratorFramework, event cache.Tree
 
 	if p.watchedNode.stat != nil && p.watchedNode.stat.Version != prevVersion {
 		for _, listener := range p.watchedNode.listeners {
-			err := listener.OnDataChange(p.watchedNode.value)
-			if err != nil {
-				fmt.Print("error calling listener: ", err)
-			}
+			listener.OnDataChange(p.watchedNode.value)
 		}
 	}
 

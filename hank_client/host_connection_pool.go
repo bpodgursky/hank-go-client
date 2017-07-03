@@ -30,9 +30,10 @@ type HostConnectionPool struct {
 	otherPools     *ConnectionSet
 
 	incrementLock *sync.Mutex
+	random *rand.Rand
 }
 
-func CreateHostConnectionPool(connections []*HostConnection, hostShuffleSeed int32, preferredHosts []string) (*HostConnectionPool, error) {
+func CreateHostConnectionPool(connections []*HostConnection, hostShuffleSeed int64, preferredHosts []string) (*HostConnectionPool, error) {
 
 	asMap := make(map[string][]*HostConnection)
 
@@ -54,25 +55,27 @@ func CreateHostConnectionPool(connections []*HostConnection, hostShuffleSeed int
 
 //	TODO this does not have the intelligent seeding the Java client has, because there's no easy equivalent of passing
 //	around a seeded Random
-func shuffle(slice []string, hostShuffleSeed int32) {
-	rand.Seed(int64(hostShuffleSeed))
+func shuffle(slice []string, hostShuffleSeed int64) {
+	seededRand := rand.New(rand.NewSource(hostShuffleSeed))
+
 	n := len(slice)
 	for i := n - 1; i > 0; i-- {
-		j := rand.Intn(i + 1)
+		j := seededRand.Intn(i + 1)
 		slice[i], slice[j] = slice[j], slice[i]
 	}
 }
 
-func shuffle2(slice []*IndexedHostConnection, hostShuffleSeed int32) {
-	rand.Seed(int64(hostShuffleSeed))
+func shuffle2(slice []*IndexedHostConnection, hostShuffleSeed int64) {
+	seededRand := rand.New(rand.NewSource(hostShuffleSeed))
+
 	n := len(slice)
 	for i := n - 1; i > 0; i-- {
-		j := rand.Intn(i + 1)
+		j := seededRand.Intn(i + 1)
 		slice[i], slice[j] = slice[j], slice[i]
 	}
 }
 
-func NewHostConnectionPool(connectionsByHost map[string][]*HostConnection, hostShuffleSeed int32, preferredHosts []string) (*HostConnectionPool, error) {
+func NewHostConnectionPool(connectionsByHost map[string][]*HostConnection, hostShuffleSeed int64, preferredHosts []string) (*HostConnectionPool, error) {
 
 	if len(connectionsByHost) == 0 {
 		return nil, errors.New("Cannot create a HostConnectionPool with no connections")
@@ -87,8 +90,10 @@ func NewHostConnectionPool(connectionsByHost map[string][]*HostConnection, hostS
 		sort.Strings(shuffledHosts)
 		shuffle(shuffledHosts, hostShuffleSeed)
 	} else {
-		shuffle(shuffledHosts, int32(time.Now().Unix()))
+		shuffle(shuffledHosts, time.Now().Unix())
 	}
+
+	random := rand.New(rand.NewSource(time.Now().Unix()))
 
 	preferredIndex := int32(0)
 	otherIndex := int32(0)
@@ -112,17 +117,18 @@ func NewHostConnectionPool(connectionsByHost map[string][]*HostConnection, hostS
 	}
 
 	if len(preferred.connections) != 0 {
-		preferred.previouslyUsedHostIndex = rand.Int31n(int32(len(preferred.connections)))
+		preferred.previouslyUsedHostIndex = random.Int31n(int32(len(preferred.connections)))
 	}
 
 	if len(other.connections) != 0 {
-		other.previouslyUsedHostIndex = rand.Int31n(int32(len(other.connections)))
+		other.previouslyUsedHostIndex = random.Int31n(int32(len(other.connections)))
 	}
 
 	return &HostConnectionPool{
-		preferredPools: preferred,
-		otherPools:     other,
-		incrementLock:  &sync.Mutex{},
+		preferred,
+		other,
+		&sync.Mutex{},
+		random,
 	}, nil
 
 }
@@ -134,7 +140,7 @@ func buildConnections(connectionsByHost map[string][]*HostConnection, hostIndex 
 		connections = append(connections, &IndexedHostConnection{connection: connection, hostIndex: hostIndex})
 	}
 
-	shuffle2(connections, int32(time.Now().Unix()))
+	shuffle2(connections, time.Now().Unix())
 	return connections
 
 }
@@ -202,7 +208,7 @@ func (p *HostConnectionPool) getNextConnectionToUse(previouslyUsedHostIndex int3
 		connectionList := connections[previouslyUsedHostIndex]
 
 		// Pick a random connection for that host
-		connectionAndIndex := connectionList[rand.Intn(len(connectionList))]
+		connectionAndIndex := connectionList[p.random.Intn(len(connectionList))]
 
 		// If a host has one unavaible connection, it is itself unavailable.
 		// Move on to the next host. Otherwise, return it.
@@ -227,7 +233,7 @@ func (p *HostConnectionPool) getNextConnectionToUse(previouslyUsedHostIndex int3
 		hostConnections := connections[previouslyUsedHostIndex]
 
 		// Pick a random connection for that host, and use it only if it is offline
-		hostConnection := hostConnections[rand.Intn(len(hostConnections))]
+		hostConnection := hostConnections[p.random.Intn(len(hostConnections))]
 
 		if hostConnection.connection.IsOffline() {
 			return hostConnection, false

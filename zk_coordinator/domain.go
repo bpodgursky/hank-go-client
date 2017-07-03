@@ -38,8 +38,6 @@ func createZkDomain(ctx *thriftext.ThreadCtx,
   metadata.PartitionerClass = partitionerName
   metadata.RequiredHostFlags = strings.Join(requiredHostFlags, ",")
 
-  //  TODO other metadata
-
   node, nodeErr := curatorext.NewThriftWatchedNode(
     client,
     curator.PERSISTENT,

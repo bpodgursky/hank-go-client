@@ -9,6 +9,7 @@ import (
 	"time"
 	"github.com/bpodgursky/hank-go-client/fixtures"
 	"github.com/bpodgursky/hank-go-client/iface"
+	"github.com/bpodgursky/hank-go-client/thriftext"
 )
 
 func TestZkCoordinator(t *testing.T) {

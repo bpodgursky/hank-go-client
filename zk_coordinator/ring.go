@@ -40,8 +40,6 @@ func loadZkRing(ctx *thriftext.ThreadCtx, client curator.CuratorFramework, liste
 			return nil, err
 		}
 
-		//  TODO add HostsWatchedMapListener.  it's what tells the client to reload the host cache thing.
-
 		return &ZkRing{root, iface.RingID(num), client, hosts, listener}, nil
 	}
 
@@ -70,15 +68,10 @@ func (p *ZkRing) AddHost(ctx *thriftext.ThreadCtx, hostName string, port int, ho
 		return nil, err
 	}
 
-	//	TODO gross
-	err = curatorext.WaitUntilOrErr(func() bool {
-		return p.hosts.Contains(host.GetID())
-	})
+	err = p.hosts.WaitUntilContains(host.GetID())
 	if err != nil {
 		return nil, err
 	}
-
-	p.hosts.Put(host.GetID(), host)
 
 	return host, err
 }

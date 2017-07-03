@@ -116,9 +116,7 @@ func (p *ZkRingGroup) AddRing(ctx *thriftext.ThreadCtx, ringNum iface.RingID) (i
 		return nil, err
 	}
 
-	err = curatorext.WaitUntilOrErr(func() bool {
-		return p.rings.Contains(ringChild)
-	})
+	err = p.rings.WaitUntilContains(ringChild)
 	if err != nil{
 		return nil, err
 	}

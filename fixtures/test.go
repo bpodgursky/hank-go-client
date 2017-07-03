@@ -58,6 +58,7 @@ func SetupZookeeper(t *testing.T) (*zk.TestCluster, curator.CuratorFramework) {
 }
 
 func TeardownZookeeper(cluster *zk.TestCluster, client curator.CuratorFramework) {
+	fmt.Println("Tearing down zookeeper")
 	client.ZookeeperClient().Close()
 	cluster.StopAllServers()
 }

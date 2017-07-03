@@ -124,6 +124,12 @@ func (p *ZkWatchedMap) Get(key string) interface{} {
 	return p.internalData[key]
 }
 
+func (p *ZkWatchedMap) WaitUntilContains(key string) error {
+	return WaitUntilOrErr(func() bool {
+		return p.Contains(key)
+	})
+}
+
 //  TODO these methods are inefficient;  is there an equivalent to ImmutableMap?
 
 func (p *ZkWatchedMap) Contains(key string) bool {
@@ -133,7 +139,7 @@ func (p *ZkWatchedMap) Contains(key string) bool {
 
 func (p *ZkWatchedMap) KeySet() []string {
 
-	//  TODO I really hope there's a better way to get the keySet of a map, this is horrifying
+	//  TODO is there a better way to get a keyset of a map?
 	keys := make([]string, len(p.internalData))
 	i := 0
 	for k := range p.internalData {

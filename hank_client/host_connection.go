@@ -33,7 +33,7 @@ func NewHostConnection(
 	establishConnectionTimeoutMs int32,
 	queryTimeoutMs int32,
 	bulkQueryTimeoutMs int32,
-) (*HostConnection, error) {
+) *HostConnection {
 
 	connection := HostConnection{
 		host:                         host,
@@ -46,12 +46,9 @@ func NewHostConnection(
 
 	host.AddStateChangeListener(&connection)
 
-	err := connection.OnDataChange(string(host.GetState()))
-	if err != nil {
-		return nil, err
-	}
+	connection.OnDataChange(string(host.GetState()))
 
-	return &connection, nil
+	return &connection
 
 }
 
@@ -172,7 +169,7 @@ func (p *HostConnection) connect() error {
 	return nil
 }
 
-func (p *HostConnection) OnDataChange(newVal interface{}) error {
+func (p *HostConnection) OnDataChange(newVal interface{}) {
 
 	if newVal == nil {
 		newVal = string(iface.HOST_OFFLINE)
@@ -191,16 +188,13 @@ func (p *HostConnection) OnDataChange(newVal interface{}) error {
 
 		err := p.connect()
 		if err != nil {
-			fmt.Print("Error connecting to host "+p.host.GetAddress().Print(), err)
+			fmt.Println("Error connecting to host "+p.host.GetAddress().Print(), err)
 			p.Unlock()
-			return err
 		}
 
 	}
 
 	p.hostState = newState
-
 	p.Unlock()
-	return nil
 
 }
