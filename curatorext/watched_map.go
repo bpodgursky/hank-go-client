@@ -5,6 +5,7 @@ import (
 	"github.com/curator-go/curator"
 	"github.com/curator-go/curator/recipes/cache"
 	"path"
+	"fmt"
 )
 
 type Loader func(ctx *iface.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, path string) (interface{}, error)
@@ -40,6 +41,7 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 			err := conditionalInsert(p.ctx, client, p.loader, p.listener, p.internalData, fullChildPath)
 			p.listener.OnChange()
 			if err != nil {
+				fmt.Println("Error inserting child: ", err)
 				return err
 			}
 		}

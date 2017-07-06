@@ -98,11 +98,10 @@ func loadZkHost(ctx *iface.ThreadCtx, client curator.CuratorFramework, listener 
 
 	state, err := curatorext.LoadStringWatchedNode(client,
 		path.Join(rootPath, STATE_PATH))
-	state.AddListener(adapter)
 	if err != nil {
 		return nil, err
 	}
-
+	state.AddListener(adapter)
 
 	return &ZkHost{rootPath, node, assignments, state, listener}, nil
 }
