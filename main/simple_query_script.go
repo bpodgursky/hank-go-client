@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/hex"
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/hank_client"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/zk_coordinator"
 	"github.com/curator-go/curator"
@@ -12,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"github.com/bpodgursky/hank-go-client/hank_client"
 )
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 	hosts := ring0.GetHosts(ctx)
 	host := hosts[0]
 
-	conn := client.NewHostConnection(host, 100, 100, 100, 100)
+	conn := hank_client.NewHostConnection(host, 100, 100, 100, 100)
 
 	domain := coordinator.GetDomain(argsWithoutProg[1])
 	domainId := domain.GetId()

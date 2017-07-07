@@ -47,7 +47,7 @@ func AsRingGroup(val interface{}) RingGroup {
 }
 
 func AsClientMetadata(val interface{}) *hank.ClientMetadata {
-	if val == nil{
+	if val == nil {
 		return nil
 	}
 	return val.(*hank.ClientMetadata)
@@ -55,26 +55,26 @@ func AsClientMetadata(val interface{}) *hank.ClientMetadata {
 
 func AsRing(val interface{}) Ring {
 	if val == nil {
-    return nil
-  }
-  return val.(Ring)
+		return nil
+	}
+	return val.(Ring)
 }
 
 func AsHostAssignmentsMetadata(val interface{}) *hank.HostAssignmentsMetadata {
-  if val == nil {
-    return nil
-  }
-  return val.(*hank.HostAssignmentsMetadata)
+	if val == nil {
+		return nil
+	}
+	return val.(*hank.HostAssignmentsMetadata)
 }
 
 func AsHostDomainPartition(val interface{}) HostDomainPartition {
-  if val == nil {
-    return nil
-  }
-  return val.(HostDomainPartition)
+	if val == nil {
+		return nil
+	}
+	return val.(HostDomainPartition)
 }
 
-//	stupid constructors for a stupid language
+//	stupid constructors required to return interface{}
 
 func NewDomainGroupMetadata() interface{} {
 	return hank.NewDomainGroupMetadata()

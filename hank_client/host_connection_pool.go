@@ -53,7 +53,7 @@ func CreateHostConnectionPool(connections []*HostConnection, hostShuffleSeed int
 
 }
 
-func shuffle(slice []string, hostShuffleSeed int64) {
+func shuffleStrings(slice []string, hostShuffleSeed int64) {
 	seededRand := rand.New(rand.NewSource(hostShuffleSeed))
 
 	n := len(slice)
@@ -63,7 +63,7 @@ func shuffle(slice []string, hostShuffleSeed int64) {
 	}
 }
 
-func shuffle2(slice []*IndexedHostConnection, hostShuffleSeed int64) {
+func shuffleConns(slice []*IndexedHostConnection, hostShuffleSeed int64) {
 	seededRand := rand.New(rand.NewSource(hostShuffleSeed))
 
 	n := len(slice)
@@ -86,9 +86,9 @@ func NewHostConnectionPool(connectionsByHost map[string][]*HostConnection, hostS
 
 	if hostShuffleSeed != NO_SEED {
 		sort.Strings(shuffledHosts)
-		shuffle(shuffledHosts, hostShuffleSeed)
+		shuffleStrings(shuffledHosts, hostShuffleSeed)
 	} else {
-		shuffle(shuffledHosts, time.Now().Unix())
+		shuffleStrings(shuffledHosts, time.Now().Unix())
 	}
 
 	random := rand.New(rand.NewSource(time.Now().Unix()))
@@ -138,7 +138,7 @@ func buildConnections(connectionsByHost map[string][]*HostConnection, hostIndex 
 		connections = append(connections, &IndexedHostConnection{connection: connection, hostIndex: hostIndex})
 	}
 
-	shuffle2(connections, time.Now().Unix())
+	shuffleConns(connections, time.Now().Unix())
 	return connections
 
 }

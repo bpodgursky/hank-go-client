@@ -1,11 +1,11 @@
 package curatorext
 
 import (
+	"fmt"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/curator-go/curator"
 	"github.com/curator-go/curator/recipes/cache"
 	"path"
-	"fmt"
 )
 
 type Loader func(ctx *iface.ThreadCtx, client curator.CuratorFramework, listener iface.DataChangeNotifier, path string) (interface{}, error)
@@ -53,6 +53,7 @@ func (p *ChildLoader) ChildEvent(client curator.CuratorFramework, event cache.Tr
 
 	return nil
 }
+
 func conditionalInsert(ctx *iface.ThreadCtx, client curator.CuratorFramework, loader Loader, listener iface.DataChangeNotifier, internalData map[string]interface{}, fullChildPath string) error {
 
 	newKey := path.Base(fullChildPath)
@@ -92,13 +93,11 @@ func NewZkWatchedMap(
 	})
 
 	startError := node.Start()
-
 	if startError != nil {
 		return nil, startError
 	}
 
 	initialChildren, err := client.GetChildren().ForPath(root)
-
 	if err != nil {
 		return nil, err
 	}
@@ -112,13 +111,6 @@ func NewZkWatchedMap(
 	}
 
 	return &ZkWatchedMap{node: node, client: client, Root: root, loader: loader, internalData: internalData}, nil
-}
-
-//  TODO is there some equivalent to Java's map interface I can use as a reference for naming here?
-
-//  allow direct puts so we don't have to wait for callbacks to fire
-func (p *ZkWatchedMap) Put(key string, value interface{}) {
-	p.internalData[key] = value
 }
 
 func (p *ZkWatchedMap) Get(key string) interface{} {
@@ -140,7 +132,6 @@ func (p *ZkWatchedMap) Contains(key string) bool {
 
 func (p *ZkWatchedMap) KeySet() []string {
 
-	//  TODO is there a better way to get a keyset of a map?
 	keys := make([]string, len(p.internalData))
 	i := 0
 	for k := range p.internalData {

@@ -9,6 +9,7 @@ import (
 	"time"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 func TestZkWatchedNode(t *testing.T) {

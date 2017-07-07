@@ -5,7 +5,6 @@ import (
 	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
-
 type DataListener interface {
 	OnDataChange(newVal interface{})
 }
@@ -45,6 +44,10 @@ func (p *MultiNotifier) OnChange() {
 	}
 }
 
+/*
+Interfaces are all a subset of the interfaces implemented in the Java client.
+Should be fleshed out as necessary for use or testing.
+ */
 
 type Coordinator interface {
 	GetRingGroup(ringGroupName string) RingGroup
@@ -67,8 +70,6 @@ type Coordinator interface {
 	) (Domain, error)
 
 	GetDomain(domain string) Domain
-
-	//  etc (stub for now)
 }
 
 type DomainGroup interface {
@@ -79,16 +80,12 @@ type DomainGroup interface {
 	GetDomainVersions(ctx *ThreadCtx) []*DomainAndVersion
 
 	GetDomainVersion(domainID DomainID) *DomainAndVersion
-
-	//  etc (stub)
 }
-type Ring interface {
-	//  stub
 
+type Ring interface {
 	AddHost(ctx *ThreadCtx, hostName string, port int, hostFlags []string) (Host, error)
 
 	GetHosts(ctx *ThreadCtx) []Host
-
 }
 
 type RingGroup interface {
@@ -105,8 +102,6 @@ type RingGroup interface {
 	GetClients() []*hank.ClientMetadata
 
 	AddListener(listener DataChangeNotifier)
-
-	//	stub
 }
 
 type HostState string
@@ -140,8 +135,6 @@ type Host interface {
 	GetState() HostState
 
 	GetID() string
-
-	//  stub
 }
 
 type Partitioner interface {
@@ -149,15 +142,13 @@ type Partitioner interface {
 }
 
 type Domain interface {
-	//  stub
-
 	GetName() string
+
 	GetId() DomainID
 
 	GetPartitioner() Partitioner
 
 	GetNumParts() int32
-
 }
 
 type HostDomainPartition interface {
@@ -186,11 +177,6 @@ type PartitionServerAddress struct {
 func (p *PartitionServerAddress) Print() string {
 	return p.HostName + ":" + strconv.Itoa(int(p.PortNumber))
 }
-
-//type HostAddress struct {
-//	Ring    Ring
-//	Address *PartitionServerAddress
-//}
 
 type DomainAndVersion struct {
 	DomainID  DomainID

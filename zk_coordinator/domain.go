@@ -14,7 +14,6 @@ type ZkDomain struct {
 
   metadata *curatorext.ZkWatchedNode
 
-  //  temp
   partitioner iface.Partitioner
 }
 
