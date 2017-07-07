@@ -3,7 +3,6 @@ package hank_client
 import (
 	"errors"
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"math"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"time"
 	"github.com/karlseguin/ccache"
 	"github.com/bpodgursky/hank-go-client/syncext"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 const NUM_STAT_SAMPLES = 3

@@ -4,9 +4,9 @@ import (
   "github.com/curator-go/curator"
   "path"
   "github.com/bpodgursky/hank-go-client/iface"
-  "github.com/bpodgursky/hank-go-client/hank_types"
   "strings"
   "github.com/bpodgursky/hank-go-client/curatorext"
+  "github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 type ZkDomain struct {

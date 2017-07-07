@@ -3,7 +3,6 @@ package curatorext
 import (
 	"reflect"
 	"github.com/bpodgursky/hank-go-client/fixtures"
-	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/curator-go/curator"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"fmt"

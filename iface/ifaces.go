@@ -2,7 +2,7 @@ package iface
 
 import (
 	"strconv"
-	"github.com/bpodgursky/hank-go-client/hank_types"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 

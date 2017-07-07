@@ -3,8 +3,8 @@ package thrift_services
 import (
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/bpodgursky/hank-go-client/hank_types"
 	"sync"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 type MapPartitionServerHandler struct {

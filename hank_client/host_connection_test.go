@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
 	"github.com/bpodgursky/hank-go-client/fixtures"
-	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"github.com/bpodgursky/hank-go-client/thrift_services"
 	"github.com/stretchr/testify/assert"
@@ -12,6 +11,7 @@ import (
 	"testing"
 	"time"
 	"github.com/bpodgursky/hank-go-client/zk_coordinator"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 func TestQueryWhenServing(t *testing.T) {

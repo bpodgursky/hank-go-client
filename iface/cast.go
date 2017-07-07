@@ -1,7 +1,6 @@
 package iface
 
-
-import "github.com/bpodgursky/hank-go-client/hank_types"
+import "github.com/liveramp/hank/hank-core/src/main/go/hank"
 
 func AsDomain(val interface{}) Domain {
 	if val == nil {

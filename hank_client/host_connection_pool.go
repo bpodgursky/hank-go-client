@@ -4,12 +4,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/iface"
 	"math/rand"
 	"sort"
 	"sync"
 	"time"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 const NO_HASH = -1

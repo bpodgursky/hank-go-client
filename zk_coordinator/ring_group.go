@@ -5,8 +5,8 @@ import (
 	"path"
 	"strconv"
 	"github.com/bpodgursky/hank-go-client/iface"
-	"github.com/bpodgursky/hank-go-client/hank_types"
 	"github.com/bpodgursky/hank-go-client/curatorext"
+	"github.com/liveramp/hank/hank-core/src/main/go/hank"
 )
 
 const CLIENT_ROOT string = "c"
