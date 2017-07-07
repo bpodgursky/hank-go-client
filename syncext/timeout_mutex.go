@@ -44,6 +44,17 @@ func (m *TimeoutMutex) TryLock(timeout time.Duration) bool {
 	}
 }
 
+//	no promises about the second after it is tested.  only approximate.
+func (m *TimeoutMutex) TestIsLocked() bool {
+
+	locked := m.TryLock(0)
+	if locked {
+		m.Unlock()
+	}
+
+	return locked
+}
+
 func (m *TimeoutMutex) TryLockNoWait() bool {
 	return m.TryLock(0)
 }

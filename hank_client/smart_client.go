@@ -14,6 +14,10 @@ import (
 	"github.com/bpodgursky/hank-go-client/syncext"
 )
 
+const NUM_STAT_SAMPLES = 3
+const SAMPLE_SLEEP_TIME = time.Second
+const STAT_INTERVAL = time.Second * 30
+
 type RequestCounters struct {
 	requests  int64
 	cacheHits int64
@@ -36,7 +40,20 @@ func (p *RequestCounters) increment(requests int64, cacheHits int64) {
 	p.cacheHits++
 
 	p.lock.Unlock()
+}
 
+func (p *RequestCounters) clear() (requests int64, cacheHits int64) {
+	p.lock.Lock()
+
+	requests = p.requests
+	cacheHits = p.cacheHits
+
+	p.requests = 0
+	p.cacheHits = 0
+
+	p.lock.Unlock()
+
+	return requests, cacheHits
 }
 
 type HankSmartClient struct {
@@ -49,6 +66,7 @@ type HankSmartClient struct {
 	serverToConnections       map[string]*HostConnectionPool
 	domainToPartToConnections map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool
 	connectionLock            *sync.Mutex
+	stopping                  *bool
 
 	cache    *ccache.Cache
 	counters *RequestCounters
@@ -84,6 +102,8 @@ func New(
 
 	connectionCacheLock := syncext.NewSingleLockSemaphore()
 
+	stopping := false
+
 	client := &HankSmartClient{coordinator,
 														 ringGroup,
 														 options,
@@ -91,6 +111,7 @@ func New(
 														 make(map[string]*HostConnectionPool),
 														 make(map[iface.DomainID]map[iface.PartitionID]*HostConnectionPool),
 														 &sync.Mutex{},
+														 &stopping,
 														 cache,
 														 NewRequestCounters(),
 														 connectionCacheLock,
@@ -98,8 +119,8 @@ func New(
 
 	client.updateConnectionCache(ctx)
 
-	stopping := false
 	go client.updateLoop(&stopping, connectionCacheLock)
+	go client.runtimeStatsLoop(&stopping)
 
 	ringGroup.AddListener(client)
 
@@ -118,6 +139,7 @@ func (p *HankSmartClient) updateLoop(stopping *bool, listenerLock *syncext.Singl
 		listenerLock.Read()
 
 		if *stopping {
+			fmt.Println("Exiting cache update routine ")
 			break
 		}
 
@@ -126,7 +148,61 @@ func (p *HankSmartClient) updateLoop(stopping *bool, listenerLock *syncext.Singl
 
 }
 
+func (p *HankSmartClient) runtimeStatsLoop(stopping *bool) {
+
+	lastCheck := time.Now().UnixNano()
+
+	for true {
+
+		if *stopping {
+			fmt.Println("Exiting stats loop")
+			break
+		}
+
+		time.Sleep(STAT_INTERVAL)
+
+		serverTotalConns := make(map[string]int64)
+		serverLockedConns := make(map[string]int64)
+
+		for i := 0; i < NUM_STAT_SAMPLES; i++ {
+			for server, conns := range p.serverToConnections {
+				conns, lockedConns := conns.GetConnectionLoad()
+				serverTotalConns[server] += conns
+				serverLockedConns[server] += lockedConns
+			}
+
+			time.Sleep(SAMPLE_SLEEP_TIME)
+		}
+
+		for server, total := range serverTotalConns {
+			locked := serverLockedConns[server]
+
+			if locked > 0 {
+				fmt.Printf("Load on connections to %v: %v %% (%v / %v locked connections)\n", server, float32(locked)/float32(total)*100, locked, total)
+			}
+
+		}
+
+		requests, cacheHits := p.counters.clear()
+		now := time.Now().UnixNano()
+		elapsed := float64(now-lastCheck) / float64(1e9)
+		throughput := float64(requests) / elapsed
+		cacheHitRate := float64(cacheHits) / float64(requests)
+
+		if requests != 0 {
+			fmt.Printf("Throughput: %v queries / second, client-side cache hit rate: %v %%\n", throughput, cacheHitRate*100)
+		}
+
+		lastCheck = now
+
+	}
+
+}
+
 func (p *HankSmartClient) Stop() {
+
+	p.stopping = newFalse()
+	p.cacheUpdateLock.Release()
 
 	for _, value := range p.domainToPartToConnections {
 		for _, connections := range value {
@@ -137,7 +213,11 @@ func (p *HankSmartClient) Stop() {
 			}
 		}
 	}
+}
 
+func newFalse() *bool {
+	b := false
+	return &b
 }
 
 func GetClientMetadata() (*hank.ClientMetadata, error) {

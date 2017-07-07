@@ -88,11 +88,6 @@ func Val1() *hank.HankResponse {
 	return resp
 }
 
-func newFalse() *bool {
-	b := false
-	return &b
-}
-
 func Key1() []byte {
 	return []byte("1")
 }

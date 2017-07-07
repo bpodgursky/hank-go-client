@@ -394,3 +394,31 @@ func (p *HostConnectionPool) GetConnections() []*HostConnection {
 
 	return all
 }
+
+
+func (p *HostConnectionPool) GetConnectionLoad() (numConnections int64, numLockedConnections int64){
+
+	numConnections = 0
+	numLockedConnections = 0
+
+	for _,conns := range p.preferredPools.connections {
+		for _, conn := range conns {
+			if conn.connection.lock.TestIsLocked() {
+				numLockedConnections++
+			}
+			numConnections++
+		}
+	}
+
+	for _,conns := range p.otherPools.connections {
+		for _, conn := range conns {
+			if conn.connection.lock.TestIsLocked() {
+				numLockedConnections++
+			}
+			numConnections++
+		}
+	}
+
+	return numConnections, numLockedConnections
+
+}
