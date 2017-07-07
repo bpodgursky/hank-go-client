@@ -178,7 +178,7 @@ func (p *HankSmartClient) runtimeStatsLoop(stopping *bool) {
 			locked := serverLockedConns[server]
 
 			if locked > 0 {
-				fmt.Printf("Load on connections to %v: %v %% (%v / %v locked connections)\n", server, float32(locked)/float32(total)*100, locked, total)
+				fmt.Printf("Load on connections to %v: %.2f %% (%v / %v locked connections)\n", server, float32(locked)/float32(total)*100, locked, total)
 			}
 
 		}
@@ -190,7 +190,7 @@ func (p *HankSmartClient) runtimeStatsLoop(stopping *bool) {
 		cacheHitRate := float64(cacheHits) / float64(requests)
 
 		if requests != 0 {
-			fmt.Printf("Throughput: %v queries / second, client-side cache hit rate: %v %%\n", throughput, cacheHitRate*100)
+			fmt.Printf("Throughput: %.2f queries / second, client-side cache hit rate: %v %%\n", throughput, cacheHitRate*100)
 		}
 
 		lastCheck = now

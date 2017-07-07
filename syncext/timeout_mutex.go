@@ -52,7 +52,7 @@ func (m *TimeoutMutex) TestIsLocked() bool {
 		m.Unlock()
 	}
 
-	return locked
+	return !locked
 }
 
 func (m *TimeoutMutex) TryLockNoWait() bool {
