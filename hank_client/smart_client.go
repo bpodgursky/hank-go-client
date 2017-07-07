@@ -36,8 +36,8 @@ func NewRequestCounters() *RequestCounters {
 func (p *RequestCounters) increment(requests int64, cacheHits int64) {
 	p.lock.Lock()
 
-	p.requests++
-	p.cacheHits++
+	p.requests+=requests
+	p.cacheHits+=cacheHits
 
 	p.lock.Unlock()
 }
@@ -342,9 +342,6 @@ func (p *HankSmartClient) get(domain iface.Domain, key []byte) (*hank.HankRespon
 
 		if pool == nil {
 			fmt.Printf("Could not find list of hosts for domain %v, partition %v\n", domain.GetName(), partition)
-
-			fmt.Println(parts)
-
 			return noReplica(), nil
 		}
 
